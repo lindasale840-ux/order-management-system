@@ -1,19 +1,35 @@
 import subprocess
-import webbrowser
-import time
+import os
+
+
+# =========================
+# CURRENT PROJECT DIRECTORY
+# =========================
+
+base_dir = os.getcwd()
+
+# =========================
+# MAIN FILE
+# =========================
+
+main_file = os.path.join(
+    base_dir,
+    "main.py"
+)
+
+# =========================
+# RUN STREAMLIT
+# =========================
 
 subprocess.Popen(
+
     [
         "python",
         "-m",
         "streamlit",
         "run",
-        "main.py"
-    ]
-)
+        main_file
+    ],
 
-time.sleep(3)
-
-webbrowser.open(
-    "http://localhost:8501"
+    cwd=base_dir
 )

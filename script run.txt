@@ -1,5 +1,11 @@
-# python -m PyInstaller --onefile run_app.py
+# python -m PyInstaller --onefile --noconsole run_app.pygit
 
 # python -m streamlit run main.py
 
 # JYLqMH@3QzNxT3m
+
+# git add .
+
+# git commit
+
+#git pull
