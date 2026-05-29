@@ -29,14 +29,14 @@ from pages.logs_page import (
 )
 
 from database.init_db import (
-    init_database
+    initialize_database
 )
 
 # =========================
 # INIT DATABASE
 # =========================
 
-init_database()
+initialize_database()
 
 # =========================
 # PAGE CONFIG

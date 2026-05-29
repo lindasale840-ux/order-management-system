@@ -1,19 +1,25 @@
 from sqlalchemy import text
+
 from database.connection import engine
 
 
-def init_database():
+def initialize_database():
 
-    with engine.connect() as conn:
+    with engine.begin() as conn:
+
+        # =========================
+        # ORDERS TABLE
+        # =========================
 
         conn.execute(text("""
+
         CREATE TABLE IF NOT EXISTS orders (
 
             id INTEGER PRIMARY KEY AUTOINCREMENT,
 
-            customer_name TEXT NOT NULL,
+            customer_name TEXT,
 
-            order_number TEXT UNIQUE NOT NULL,
+            order_number TEXT UNIQUE,
 
             measurement_date DATE,
 
@@ -23,14 +29,20 @@ def init_database():
 
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
+
         """))
 
+        # =========================
+        # PAYMENTS TABLE
+        # =========================
+
         conn.execute(text("""
+
         CREATE TABLE IF NOT EXISTS payments (
 
             id INTEGER PRIMARY KEY AUTOINCREMENT,
 
-            order_number TEXT UNIQUE NOT NULL,
+            order_number TEXT UNIQUE,
 
             invoice_date DATE,
 
@@ -38,11 +50,11 @@ def init_database():
 
             payment_status DATE,
 
-            total REAL DEFAULT 0,
+            total FLOAT,
 
-            commission_percent REAL DEFAULT 0,
+            commission_percent FLOAT,
 
-            commission_actual REAL DEFAULT 0,
+            commission_actual FLOAT,
 
             note TEXT,
 
@@ -50,9 +62,15 @@ def init_database():
 
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
+
         """))
 
+        # =========================
+        # LOGS TABLE
+        # =========================
+
         conn.execute(text("""
+
         CREATE TABLE IF NOT EXISTS logs (
 
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -67,6 +85,34 @@ def init_database():
 
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
+
         """))
 
-        conn.commit()
+        # =========================
+        # INDEXES
+        # =========================
+
+        conn.execute(text("""
+        CREATE INDEX IF NOT EXISTS idx_orders_customer
+        ON orders(customer_name)
+        """))
+
+        conn.execute(text("""
+        CREATE INDEX IF NOT EXISTS idx_orders_order
+        ON orders(order_number)
+        """))
+
+        conn.execute(text("""
+        CREATE INDEX IF NOT EXISTS idx_payments_order
+        ON payments(order_number)
+        """))
+
+        conn.execute(text("""
+        CREATE INDEX IF NOT EXISTS idx_logs_order
+        ON logs(order_number)
+        """))
+
+        conn.execute(text("""
+        CREATE INDEX IF NOT EXISTS idx_logs_customer
+        ON logs(customer_name)
+        """))

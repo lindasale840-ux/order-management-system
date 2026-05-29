@@ -43,7 +43,7 @@ def show_payment_page():
         order_df = (
             OrderRepository
             .get_orders_by_customer(
-                [selected_customer]
+                selected_customer
             )
         )
 
