@@ -4,29 +4,56 @@ from repositories.log_repository import (
     LogRepository
 )
 
-from components.pagination import (
-    paginate_dataframe
+from components.aggrid_table import (
+    render_aggrid
 )
 
+from utils.excel_export import (
+    dataframe_to_excel
+)
 
 def show_logs_page():
 
     st.title("Logs")
 
+    page_size = st.selectbox(
+
+        "Rows per page",
+
+        [5, 10, 20, 50],
+
+        index=0,
+
+        key="logs_page_size"
+    )
+
     df = LogRepository.get_logs()
 
-    paginated_df = paginate_dataframe(
+    render_aggrid(
 
         df,
 
-        "logs",
+        height=500,
 
-        5
+        page_size=page_size
     )
 
-    st.dataframe(
 
-        paginated_df,
+    excel_data = dataframe_to_excel({
 
-        use_container_width=True
+    "Logs": df
+    })
+
+    st.download_button(
+
+        label="📥 Export Logs Excel",
+
+        data=excel_data,
+
+        file_name="system_logs.xlsx",
+
+        mime=(
+            "application/vnd.openxmlformats-"
+            "officedocument.spreadsheetml.sheet"
+        )
     )

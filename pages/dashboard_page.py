@@ -131,13 +131,26 @@ def show_dashboard_page():
         len(df)
     )
 
-    paginated_df = paginate_dataframe(
-    df,
-    "dashboard",
-    5
-)
+    from components.aggrid_table import (
+    render_aggrid
+    )
 
-    st.dataframe(
-        paginated_df,
-        use_container_width=True
+    page_size = st.selectbox(
+
+        "Rows per page",
+
+        [5, 10, 20, 50],
+
+        index=0,
+
+        key="dashboard_page_size"
+    )
+
+    render_aggrid(
+
+        df,
+
+        height=500,
+
+        page_size=page_size
     )

@@ -2,13 +2,17 @@ from sqlalchemy import text
 
 from database.connection import engine
 
+from utils.password_utils import (
+    hash_password
+)
+
 
 def initialize_database():
 
     with engine.begin() as conn:
 
         # =========================
-        # ORDERS TABLE
+        # ORDERS
         # =========================
 
         conn.execute(text("""
@@ -33,7 +37,7 @@ def initialize_database():
         """))
 
         # =========================
-        # PAYMENTS TABLE
+        # PAYMENTS
         # =========================
 
         conn.execute(text("""
@@ -66,7 +70,7 @@ def initialize_database():
         """))
 
         # =========================
-        # LOGS TABLE
+        # LOGS
         # =========================
 
         conn.execute(text("""
@@ -84,6 +88,47 @@ def initialize_database():
             description TEXT,
 
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+
+        """))
+
+        # =========================
+        # USERS
+        # =========================
+
+        conn.execute(text("""
+
+        CREATE TABLE IF NOT EXISTS users (
+
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+            username TEXT UNIQUE,
+
+            password_hash TEXT,
+
+            role TEXT,
+
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+
+        """))
+
+                # =========================
+        # ERROR LOGS
+        # =========================
+
+        conn.execute(text("""
+
+        CREATE TABLE IF NOT EXISTS error_logs (
+
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+            page_name TEXT,
+
+            error_message TEXT,
+
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+
         )
 
         """))
@@ -116,3 +161,61 @@ def initialize_database():
         CREATE INDEX IF NOT EXISTS idx_logs_customer
         ON logs(customer_name)
         """))
+
+        # =========================
+        # DEFAULT ADMIN
+        # =========================
+
+        admin_exist = conn.execute(
+
+            text("""
+
+            SELECT COUNT(*)
+
+            FROM users
+
+            WHERE username='admin'
+
+            """)
+
+        ).scalar()
+
+        if admin_exist == 0:
+
+            conn.execute(
+
+                text("""
+
+                INSERT INTO users (
+
+                    username,
+
+                    password_hash,
+
+                    role
+
+                )
+
+                VALUES (
+
+                    :username,
+
+                    :password_hash,
+
+                    :role
+
+                )
+
+                """),
+
+                {
+
+                    "username": "admin",
+
+                    "password_hash": hash_password(
+                        "123456"
+                    ),
+
+                    "role": "ADMIN"
+                }
+            )

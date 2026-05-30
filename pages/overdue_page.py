@@ -8,8 +8,8 @@ from repositories.order_repository import (
     OrderRepository
 )
 
-from components.pagination import (
-    paginate_dataframe
+from utils.excel_export import (
+    dataframe_to_excel
 )
 
 def show_overdue_page():
@@ -59,13 +59,45 @@ def show_overdue_page():
          == "Missing Cert")
     ]
 
-    paginated_df = paginate_dataframe(
-    overdue_df,
-    "overdue",
-    5
-)
+    excel_data = dataframe_to_excel({
 
-    st.dataframe(
-        paginated_df,
-        use_container_width=True
+    "Overdue": overdue_df
+    })
+
+    st.download_button(
+
+            label="📥 Export Overdue Excel",
+
+            data=excel_data,
+
+            file_name="overdue_report.xlsx",
+
+            mime=(
+                "application/vnd.openxmlformats-"
+                "officedocument.spreadsheetml.sheet"
+            )
+    )
+
+    from components.aggrid_table import (
+    render_aggrid
+    )
+
+    page_size = st.selectbox(
+
+    "Rows per page",
+
+    [5, 10, 20, 50],
+
+    index=0,
+
+    key="overdue_page_size"
+    )
+
+    render_aggrid(
+
+        overdue_df,
+
+        height=500,
+
+        page_size=page_size
     )
