@@ -8,9 +8,16 @@ from components.pagination import (
     paginate_dataframe
 )
 
+from utils.auth_guard import (
+    require_admin
+)
+
 def show_dashboard_page():
 
+    require_admin()
+    
     st.title("Dashboard")
+    
 
     tab1, tab2 = st.tabs([
         "Manual Input",

@@ -8,9 +8,15 @@ from components.aggrid_table import (
     render_aggrid
 )
 
+from utils.auth_guard import (
+    require_admin
+)
+
 
 def show_error_logs_page():
 
+    require_admin()
+    
     st.title(
         "🚨 Error Logs"
     )

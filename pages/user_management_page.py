@@ -8,9 +8,14 @@ from utils.password_utils import (
     hash_password
 )
 
+from utils.auth_guard import (
+    require_admin
+)
 
 def show_user_management_page():
 
+    require_admin()
+    
     st.title(
         "👥 User Management"
     )

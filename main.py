@@ -1,4 +1,9 @@
 import streamlit as st
+import traceback
+
+from pages.login_page import (
+    show_login_page
+)
 
 from pages.dashboard_page import (
     show_dashboard_page
@@ -28,8 +33,20 @@ from pages.logs_page import (
     show_logs_page
 )
 
+from pages.user_management_page import (
+    show_user_management_page
+)
+
+from pages.error_logs_page import (
+    show_error_logs_page
+)
+
 from database.init_db import (
     initialize_database
+)
+
+from repositories.error_log_repository import (
+    ErrorLogRepository
 )
 
 # =========================
@@ -50,6 +67,20 @@ st.set_page_config(
 
     layout="wide"
 )
+
+# =========================
+# LOGIN CHECK
+# =========================
+
+if "logged_in" not in st.session_state:
+
+    st.session_state["logged_in"] = False
+
+if not st.session_state["logged_in"]:
+
+    show_login_page()
+
+    st.stop()
 
 # =========================
 # CUSTOM CSS
@@ -110,15 +141,29 @@ section[data-testid="stSidebar"] * {
 # =========================
 
 st.sidebar.markdown(
+
     '<div class="sidebar-title">📦 ERP MENU</div>',
+
     unsafe_allow_html=True
 )
 
-page = st.sidebar.radio(
+st.sidebar.success(
 
-    "Navigation",
+    f"👤 {st.session_state['username']}"
+)
 
-    [
+st.sidebar.info(
+
+    f"Role: {st.session_state['role']}"
+)
+
+# =========================
+# MENU BY ROLE
+# =========================
+
+if st.session_state["role"] == "ADMIN":
+
+    menu_options = [
 
         "📊 Dashboard",
 
@@ -132,8 +177,33 @@ page = st.sidebar.radio(
 
         "📈 Chart Customer",
 
+        "📝 Logs",
+
+        "👥 User Management",
+
+        "🚨 Error Logs"
+    ]
+
+else:
+
+    menu_options = [
+
+        "⚠️ Overdue",
+
+        "📑 Finance",
+
+        "🔔 Notification Center",
+
+        "📈 Chart Customer",
+
         "📝 Logs"
     ]
+
+page = st.sidebar.radio(
+
+    "Navigation",
+
+    menu_options
 )
 
 st.sidebar.divider()
@@ -143,33 +213,88 @@ st.sidebar.info(
 )
 
 # =========================
-# ROUTING
+# LOGOUT
 # =========================
 
-if page == "📊 Dashboard":
+st.sidebar.divider()
 
-    show_dashboard_page()
+if st.sidebar.button(
 
-elif page == "💰 Payment":
+    "🚪 Logout"
+):
 
-    show_payment_page()
+    st.session_state.clear()
 
-elif page == "⚠️ Overdue":
+    st.rerun()
 
-    show_overdue_page()
+# =========================
+# ROUTING + ERROR CAPTURE
+# =========================
 
-elif page == "📑 Finance":
+try:
 
-    show_finance_page()
+    if page == "📊 Dashboard":
 
-elif page == "🔔 Notification Center":
+        show_dashboard_page()
 
-    show_notification_page()
+    elif page == "💰 Payment":
 
-elif page == "📈 Chart Customer":
+        show_payment_page()
 
-    show_chart_customer_page()
+    elif page == "⚠️ Overdue":
 
-elif page == "📝 Logs":
+        show_overdue_page()
 
-    show_logs_page()
+    elif page == "📑 Finance":
+
+        show_finance_page()
+
+    elif page == "🔔 Notification Center":
+
+        show_notification_page()
+
+    elif page == "📈 Chart Customer":
+
+        show_chart_customer_page()
+
+    elif page == "📝 Logs":
+
+        show_logs_page()
+
+    elif page == "👥 User Management":
+
+        show_user_management_page()
+
+    elif page == "🚨 Error Logs":
+
+        show_error_logs_page()
+
+except Exception:
+
+    error_text = traceback.format_exc()
+
+    try:
+
+        ErrorLogRepository.add_error(
+
+            page_name=page,
+
+            error_message=error_text
+        )
+
+    except Exception:
+
+        pass
+
+    st.error(
+
+        "Unexpected error occurred. "
+        "Error saved to Error Logs."
+    )
+
+    with st.expander(
+
+        "Technical Details"
+    ):
+
+        st.code(error_text)

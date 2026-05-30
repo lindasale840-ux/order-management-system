@@ -1,9 +1,0 @@
-[server]
-
-runOnSave = true
-
-fileWatcherType = "poll"
-
-headless = false
-
-port = 8501

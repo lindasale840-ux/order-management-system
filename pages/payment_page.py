@@ -12,8 +12,13 @@ from services.payment_service import (
     PaymentService
 )
 
+from utils.auth_guard import (
+    require_admin
+)
 
 def show_payment_page():
+
+    require_admin()
 
     st.title("Payment")
 
