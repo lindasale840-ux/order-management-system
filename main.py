@@ -1,6 +1,8 @@
 import streamlit as st
 import traceback
 
+ENABLE_CHART_PAGE = False
+
 from pages.login_page import (
     show_login_page
 )
@@ -41,6 +43,14 @@ from pages.error_logs_page import (
     show_error_logs_page
 )
 
+from pages.error_logs_page import (
+    show_error_logs_page
+)
+
+from pages.backup_page import (
+    show_backup_page
+)
+
 from database.init_db import (
     initialize_database
 )
@@ -49,6 +59,10 @@ from repositories.error_log_repository import (
     ErrorLogRepository
 )
 
+
+from pages.revenue_management_page import (
+    show_revenue_management_page
+)
 # =========================
 # INIT DATABASE
 # =========================
@@ -175,14 +189,24 @@ if st.session_state["role"] == "ADMIN":
 
         "🔔 Notification Center",
 
-        "📈 Chart Customer",
+
+        "💵 Revenue Management",
 
         "📝 Logs",
 
         "👥 User Management",
 
-        "🚨 Error Logs"
+        "🚨 Error Logs",
+
+        "💾 Backup Database"
     ]
+
+    if ENABLE_CHART_PAGE:
+
+        menu_options.insert(
+                5,
+                "📈 Chart Customer"
+    )
 
 else:
 
@@ -195,6 +219,8 @@ else:
         "🔔 Notification Center",
 
         "📈 Chart Customer",
+
+        "💵 Revenue Management",
 
         "📝 Logs"
     ]
@@ -253,9 +279,21 @@ try:
 
         show_notification_page()
 
-    elif page == "📈 Chart Customer":
+    elif (
+
+        page == "📈 Chart Customer"
+
+        and
+
+        ENABLE_CHART_PAGE
+
+    ):
 
         show_chart_customer_page()
+
+    elif page == "💵 Revenue Management":
+
+        show_revenue_management_page()    
 
     elif page == "📝 Logs":
 
@@ -268,6 +306,10 @@ try:
     elif page == "🚨 Error Logs":
 
         show_error_logs_page()
+
+    elif page == "💾 Backup Database":
+
+        show_backup_page()   
 
 except Exception:
 
