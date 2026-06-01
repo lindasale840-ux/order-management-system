@@ -1,4 +1,6 @@
 import streamlit as st
+import pandas as pd
+from datetime import date
 
 from repositories.order_repository import (
     OrderRepository
@@ -15,6 +17,7 @@ from services.payment_service import (
 from utils.auth_guard import (
     require_admin
 )
+
 
 def show_payment_page():
 
@@ -86,12 +89,55 @@ def show_payment_page():
             .to_dict()
         )
 
+    # =========================
+    # LOAD SAVED DATES
+    # =========================
+
+    invoice_date_value = date.today()
+
+    if existing_data.get(
+        "invoice_date"
+    ):
+
+        invoice_date_value = (
+            pd.to_datetime(
+                existing_data[
+                    "invoice_date"
+                ]
+            ).date()
+        )
+
+    payment_status_saved = (
+        existing_data.get(
+            "payment_status"
+        )
+    )
+
+    unpaid_default = pd.isna(
+        payment_status_saved
+    )
+
+    if unpaid_default:
+
+        payment_status_value = (
+            date.today()
+        )
+
+    else:
+
+        payment_status_value = (
+            pd.to_datetime(
+                payment_status_saved
+            ).date()
+        )
+
     col1, col2 = st.columns(2)
 
     with col1:
 
         invoice_date = st.date_input(
-            "Invoice Date"
+            "Invoice Date",
+            value=invoice_date_value
         )
 
         payment_terms = st.number_input(
@@ -119,7 +165,8 @@ def show_payment_page():
     with col2:
 
         unpaid = st.checkbox(
-            "Not Paid Yet"
+            "Not Paid Yet",
+            value=unpaid_default
         )
 
         if unpaid:
@@ -132,8 +179,11 @@ def show_payment_page():
 
         else:
 
-            payment_status = st.date_input(
-                "Payment Status"
+            payment_status = (
+                st.date_input(
+                    "Payment Status",
+                    value=payment_status_value
+                )
             )
 
         commission_percent = st.number_input(
@@ -168,7 +218,9 @@ def show_payment_page():
         f"{commission_actual:,.2f}"
     )
 
-    if st.button("Save Invoice"):
+    if st.button(
+        "Save Invoice"
+    ):
 
         PaymentService.save_invoice(
 
@@ -190,3 +242,5 @@ def show_payment_page():
         st.success(
             "Invoice saved"
         )
+
+        st.rerun()
