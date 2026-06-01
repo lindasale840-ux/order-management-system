@@ -73,6 +73,91 @@ def show_revenue_management_page():
             == selected_customer
         ]
 
+            # =========================
+    # YEAR / MONTH FILTER
+    # =========================
+
+    df["invoice_date"] = pd.to_datetime(
+
+        df["invoice_date"],
+
+        errors="coerce"
+    )
+
+    available_years = sorted(
+
+        df["invoice_date"]
+        .dropna()
+        .dt.year
+        .unique()
+        .tolist(),
+
+        reverse=True
+    )
+
+    if available_years:
+
+        year_options = [
+
+            "ALL"
+
+        ] + available_years
+
+    else:
+
+        year_options = ["ALL"]
+
+    col_filter1, col_filter2 = st.columns(2)
+
+    with col_filter1:
+
+        selected_year = st.selectbox(
+
+            "Year",
+
+            year_options
+        )
+
+    with col_filter2:
+
+        selected_month = st.selectbox(
+
+            "Month",
+
+            [
+
+                "ALL",
+
+                1, 2, 3, 4, 5, 6,
+
+                7, 8, 9, 10, 11, 12
+
+            ]
+        )
+
+    if selected_year != "ALL":
+
+        df = df[
+
+            df["invoice_date"]
+            .dt.year
+
+            ==
+
+            selected_year
+        ]
+
+    if selected_month != "ALL":
+
+        df = df[
+
+            df["invoice_date"]
+            .dt.month
+
+            ==
+
+            selected_month
+        ]
     # =========================
     # KPI
     # =========================
