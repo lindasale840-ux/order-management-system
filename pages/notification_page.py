@@ -8,6 +8,40 @@ from repositories.order_repository import (
     OrderRepository
 )
 
+from components.aggrid_table import (
+    render_aggrid
+)
+
+from utils.excel_export import (
+    dataframe_to_excel
+)
+
+
+def export_button(
+    df,
+    filename
+):
+
+    excel_data = dataframe_to_excel({
+
+        "Data": df
+
+    })
+
+    st.download_button(
+
+        label="📥 Export Excel",
+
+        data=excel_data,
+
+        file_name=filename,
+
+        mime=(
+            "application/vnd.openxmlformats-"
+            "officedocument.spreadsheetml.sheet"
+        )
+    )
+
 
 def show_notification_page():
 
@@ -26,7 +60,9 @@ def show_notification_page():
     ].tolist()
 
     selected_customer = st.selectbox(
+
         "Filter Customer",
+
         customer_options
     )
 
@@ -38,190 +74,255 @@ def show_notification_page():
     if selected_customer != "ALL":
 
         df = df[
+
             df["customer_name"]
-            == selected_customer
+
+            ==
+
+            selected_customer
+
         ]
 
-    # =========================
-    # MISSING CERT
-    # =========================
-
     missing_cert_df = df[
+
         df["cert_workflow_status"]
-        == "Missing Cert"
+
+        ==
+
+        "Missing Cert"
+
     ]
-
-    st.subheader(
-        "📄 Missing Certificate"
-    )
-
-    if missing_cert_df.empty:
-
-        st.success(
-            "No missing certificate"
-        )
-
-    else:
-
-        for _, row in (
-            missing_cert_df.iterrows()
-        ):
-
-            st.markdown(f"""
-
-            <div class="notification-card red-card">
-
-            ❌ Customer:
-            {row['customer_name']}
-
-            <br>
-
-            Order:
-            {row['order_number']}
-
-            <br>
-
-            Measurement Date:
-            {row['measurement_date']}
-
-            </div>
-
-            """, unsafe_allow_html=True)
-
-    # =========================
-    # PAYMENT OVERDUE
-    # =========================
 
     payment_overdue_df = df[
+
         df["payment_overdue"]
-        == "Overdue"
+
+        ==
+
+        "Overdue"
+
     ]
-
-    st.subheader(
-        "💰 Payment Overdue"
-    )
-
-    if payment_overdue_df.empty:
-
-        st.success(
-            "No overdue payment"
-        )
-
-    else:
-
-        for _, row in (
-            payment_overdue_df.iterrows()
-        ):
-
-            st.markdown(f"""
-
-            <div class="notification-card orange-card">
-
-            ⚠️ Customer:
-            {row['customer_name']}
-
-            <br>
-
-            Order:
-            {row['order_number']}
-
-            <br>
-
-            Invoice Date:
-            {row['invoice_date']}
-
-            </div>
-
-            """, unsafe_allow_html=True)
-
-    # =========================
-    # DUE SOON
-    # =========================
 
     due_soon_df = df[
+
         df["cert_due_soon"]
-        == "Due Soon"
+
+        ==
+
+        "Due Soon"
+
     ]
-
-    st.subheader(
-        "📅 Calibration Due Soon"
-    )
-
-    if due_soon_df.empty:
-
-        st.success(
-            "No due soon"
-        )
-
-    else:
-
-        for _, row in (
-            due_soon_df.iterrows()
-        ):
-
-            st.markdown(f"""
-
-            <div class="notification-card blue-card">
-
-            📌 Customer:
-            {row['customer_name']}
-
-            <br>
-
-            Order:
-            {row['order_number']}
-
-            <br>
-
-            Measurement Date:
-            {row['measurement_date']}
-
-            </div>
-
-            """, unsafe_allow_html=True)
-
-    # =========================
-    # MISSING INVOICE
-    # =========================
 
     missing_invoice_df = df[
+
         df["order_status"]
-        == "Missing Invoice"
+
+        ==
+
+        "Missing Invoice"
+
     ]
 
-    st.subheader(
-        "🧾 Missing Invoice"
-    )
+    # =========================
+    # KPI SUMMARY
+    # =========================
 
-    if missing_invoice_df.empty:
+    col1, col2, col3, col4 = st.columns(4)
 
-        st.success(
-            "No missing invoice"
+    with col1:
+
+        st.metric(
+
+            "📄 Missing Cert",
+
+            len(missing_cert_df)
         )
 
-    else:
+    with col2:
 
-        for _, row in (
-            missing_invoice_df.iterrows()
-        ):
+        st.metric(
 
-            st.markdown(f"""
+            "💰 Payment Overdue",
 
-            <div class="notification-card green-card">
+            len(payment_overdue_df)
+        )
 
-            📥 Customer:
-            {row['customer_name']}
+    with col3:
 
-            <br>
+        st.metric(
 
-            Order:
-            {row['order_number']}
+            "📅 Due Soon",
 
-            <br>
+            len(due_soon_df)
+        )
 
-            Cert Date:
-            {row['cert_status']}
+    with col4:
 
-            </div>
+        st.metric(
 
-            """, unsafe_allow_html=True)
+            "🧾 Missing Invoice",
+
+            len(missing_invoice_df)
+        )
+
+    st.divider()
+
+    tab1, tab2, tab3, tab4 = st.tabs([
+
+        f"📄 Missing Cert ({len(missing_cert_df)})",
+
+        f"💰 Payment Overdue ({len(payment_overdue_df)})",
+
+        f"📅 Due Soon ({len(due_soon_df)})",
+
+        f"🧾 Missing Invoice ({len(missing_invoice_df)})"
+
+    ])
+
+    # =========================
+    # TAB 1
+    # =========================
+
+    with tab1:
+
+        st.metric(
+
+            "Missing Certificate",
+
+            len(missing_cert_df)
+        )
+
+        if missing_cert_df.empty:
+
+            st.success(
+                "No missing certificate"
+            )
+
+        else:
+
+            render_aggrid(
+
+                missing_cert_df,
+
+                height=500,
+
+                page_size=10
+            )
+
+            export_button(
+
+                missing_cert_df,
+
+                "missing_certificate.xlsx"
+            )
+
+    # =========================
+    # TAB 2
+    # =========================
+
+    with tab2:
+
+        st.metric(
+
+            "Payment Overdue",
+
+            len(payment_overdue_df)
+        )
+
+        if payment_overdue_df.empty:
+
+            st.success(
+                "No overdue payment"
+            )
+
+        else:
+
+            render_aggrid(
+
+                payment_overdue_df,
+
+                height=500,
+
+                page_size=10
+            )
+
+            export_button(
+
+                payment_overdue_df,
+
+                "payment_overdue.xlsx"
+            )
+
+    # =========================
+    # TAB 3
+    # =========================
+
+    with tab3:
+
+        st.metric(
+
+            "Calibration Due Soon",
+
+            len(due_soon_df)
+        )
+
+        if due_soon_df.empty:
+
+            st.success(
+                "No due soon"
+            )
+
+        else:
+
+            render_aggrid(
+
+                due_soon_df,
+
+                height=500,
+
+                page_size=10
+            )
+
+            export_button(
+
+                due_soon_df,
+
+                "calibration_due_soon.xlsx"
+            )
+
+    # =========================
+    # TAB 4
+    # =========================
+
+    with tab4:
+
+        st.metric(
+
+            "Missing Invoice",
+
+            len(missing_invoice_df)
+        )
+
+        if missing_invoice_df.empty:
+
+            st.success(
+                "No missing invoice"
+            )
+
+        else:
+
+            render_aggrid(
+
+                missing_invoice_df,
+
+                height=500,
+
+                page_size=10
+            )
+
+            export_button(
+
+                missing_invoice_df,
+
+                "missing_invoice.xlsx"
+            )
