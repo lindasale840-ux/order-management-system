@@ -13,3 +13,11 @@
 #pip install -r requirements.txt
 
 pip freeze > requirements.txt
+
+
+git log --oneline
+
+Tìm dạng 1a2b3c4 ms từ commit
+
+git reset --hard 1a2b3c4
+git push --force
