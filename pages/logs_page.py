@@ -12,9 +12,65 @@ from utils.excel_export import (
     dataframe_to_excel
 )
 
+
 def show_logs_page():
 
     st.title("Logs")
+
+    # =========================
+    # LOG SUMMARY
+    # =========================
+
+    total_logs = (
+        LogRepository.get_log_count()
+    )
+
+    st.metric(
+        "Total Logs",
+        total_logs
+    )
+
+    # =========================
+    # DELETE ALL LOGS
+    # =========================
+
+    with st.expander(
+        "⚠️ Maintenance"
+    ):
+
+        st.warning(
+            "Delete all logs cannot be undone."
+        )
+
+        confirm_delete = st.checkbox(
+            "I understand and want to delete all logs"
+        )
+
+        if st.button(
+            "🗑 Delete All Logs"
+        ):
+
+            if not confirm_delete:
+
+                st.error(
+                    "Please confirm first"
+                )
+
+            else:
+
+                LogRepository.delete_all_logs()
+
+                st.success(
+                    "All logs deleted"
+                )
+
+                st.rerun()
+
+    st.divider()
+
+    # =========================
+    # PAGE SIZE
+    # =========================
 
     page_size = st.selectbox(
 
@@ -27,7 +83,17 @@ def show_logs_page():
         key="logs_page_size"
     )
 
-    df = LogRepository.get_logs()
+    # =========================
+    # LOAD DATA
+    # =========================
+
+    df = (
+        LogRepository.get_logs()
+    )
+
+    # =========================
+    # GRID
+    # =========================
 
     render_aggrid(
 
@@ -38,10 +104,13 @@ def show_logs_page():
         page_size=page_size
     )
 
+    # =========================
+    # EXPORT
+    # =========================
 
     excel_data = dataframe_to_excel({
 
-    "Logs": df
+        "Logs": df
     })
 
     st.download_button(
