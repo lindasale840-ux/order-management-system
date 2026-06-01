@@ -11,6 +11,23 @@ def require_admin():
 
         st.stop()
 
+def require_manager():
+
+    if st.session_state.get(
+        "role"
+    ) not in [
+
+        "ADMIN",
+
+        "MANAGER"
+
+    ]:
+
+        st.error(
+            "Manager only page"
+        )
+
+        st.stop()
 
 def require_login():
 

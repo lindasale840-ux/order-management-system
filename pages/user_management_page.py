@@ -41,6 +41,8 @@ def show_user_management_page():
 
             "USER",
 
+            "MANAGER",
+
             "ADMIN"
         ]
     )

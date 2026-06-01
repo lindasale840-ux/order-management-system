@@ -174,8 +174,9 @@ st.sidebar.info(
 # =========================
 # MENU BY ROLE
 # =========================
+role = st.session_state["role"]
 
-if st.session_state["role"] == "ADMIN":
+if role == "ADMIN":
 
     menu_options = [
 
@@ -207,6 +208,25 @@ if st.session_state["role"] == "ADMIN":
                 5,
                 "📈 Chart Customer"
     )
+        
+elif role == "MANAGER":
+
+    menu_options = [
+
+        "📊 Dashboard",
+
+        "💰 Payment",
+
+        "⚠️ Overdue",
+
+        "📑 Finance",
+
+        "🔔 Notification Center",
+
+        "💵 Revenue Management",
+
+        "📝 Logs"
+    ]        
 
 else:
 
