@@ -3,55 +3,55 @@ import traceback
 
 ENABLE_CHART_PAGE = True
 
-from pages.login_page import (
+from erp_pages.login_page import (
     show_login_page
 )
 
-from pages.dashboard_page import (
+from erp_pages.dashboard_page import (
     show_dashboard_page
 )
 
-from pages.payment_page import (
+from erp_pages.payment_page import (
     show_payment_page
 )
 
-from pages.overdue_page import (
+from erp_pages.overdue_page import (
     show_overdue_page
 )
 
-from pages.finance_page import (
+from erp_pages.finance_page import (
     show_finance_page
 )
 
-from pages.notification_page import (
+from erp_pages.notification_page import (
     show_notification_page
 )
 
-from pages.chart_customer_page import (
+from erp_pages.chart_customer_page import (
     show_chart_customer_page
 )
 
-from pages.logs_page import (
+from erp_pages.logs_page import (
     show_logs_page
 )
 
-from pages.user_management_page import (
+from erp_pages.user_management_page import (
     show_user_management_page
 )
 
-from pages.error_logs_page import (
+from erp_pages.error_logs_page import (
     show_error_logs_page
 )
 
-from pages.error_logs_page import (
+from erp_pages.error_logs_page import (
     show_error_logs_page
 )
 
-from pages.backup_page import (
+from erp_pages.backup_page import (
     show_backup_page
 )
 
-from pages.document_tracking_page import (
+from erp_pages.document_tracking_page import (
     show_document_tracking_page
 )
 
@@ -68,7 +68,7 @@ from repositories.error_log_repository import (
 )
 
 
-from pages.revenue_management_page import (
+from erp_pages.revenue_management_page import (
     show_revenue_management_page
 )
 # =========================
