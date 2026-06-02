@@ -10,12 +10,12 @@ from repositories.order_repository import (
 OrderRepository
 )
 
-from repositories.external_expense_repository import (
-ExternalExpenseRepository
+from repositories.other_revenue_repository import (
+    OtherRevenueRepository
 )
 
-from services.external_expense_service import (
-ExternalExpenseService
+from services.other_revenue_service import (
+    OtherRevenueService
 )
 
 from components.aggrid_table import (
@@ -168,13 +168,13 @@ def show_revenue_management_page():
         ]
 
     # =========================
-    # EXTERNAL EXPENSE INPUT
+    # Other Revenue INPUT
     # =========================
 
     st.divider()
 
     st.subheader(
-        "💸 External Expense"
+        "💸 Other Revenue"
     )
 
     col_exp1, col_exp2, col_exp3 = (
@@ -183,13 +183,13 @@ def show_revenue_management_page():
 
     with col_exp1:
 
-        expense_date = st.date_input(
-            "Expense Date"
+        other_revenue_date = st.date_input(
+            "Other Revenue Date"
         )
 
     with col_exp2:
 
-        expense_amount = st.number_input(
+        other_revenue_amount = st.number_input(
 
             "Amount",
 
@@ -200,15 +200,15 @@ def show_revenue_management_page():
 
     with col_exp3:
 
-        expense_note = st.text_input(
+        other_revenue_note = st.text_input(
             "Note"
         )
 
     if st.button(
-        "Add Expense"
+        "Add Revenue"
     ):
 
-        if expense_amount <= 0:
+        if other_revenue_amount <= 0:
 
             st.error(
                 "Amount must > 0"
@@ -216,17 +216,17 @@ def show_revenue_management_page():
 
         else:
 
-            ExternalExpenseService.add_expense(
+            OtherRevenueService.add_revenue(
 
-                expense_date,
+                other_revenue_date,
 
-                expense_amount,
+                other_revenue_amount,
 
-                expense_note
+                other_revenue_note
             )
 
             st.success(
-                "Expense added"
+                "Revenue added"
             )
 
             st.rerun()
@@ -235,25 +235,25 @@ def show_revenue_management_page():
     # LOAD EXPENSE DATA
     # =========================
 
-    expense_df = (
-        ExternalExpenseRepository
-        .get_all_expenses()
+    other_revenue_df = (
+        OtherRevenueRepository
+        .get_all_revenues()
     )
 
-    if not expense_df.empty:
+    if not other_revenue_df.empty:
 
-        expense_df["expense_date"] = (
+        other_revenue_df["expense_date"] = (
             pd.to_datetime(
-                expense_df["expense_date"],
+                other_revenue_df["expense_date"],
                 errors="coerce"
             )
         )
 
         if selected_year != "ALL":
 
-            expense_df = expense_df[
+            other_revenue_df = other_revenue_df[
 
-                expense_df[
+                other_revenue_df[
                     "expense_date"
                 ]
                 .dt.year
@@ -265,9 +265,9 @@ def show_revenue_management_page():
 
         if selected_month != "ALL":
 
-            expense_df = expense_df[
+            other_revenue_df = other_revenue_df[
 
-                expense_df[
+                other_revenue_df[
                     "expense_date"
                 ]
                 .dt.month
@@ -337,13 +337,13 @@ def show_revenue_management_page():
 
     external_revenue = (
 
-        expense_df["amount"]
+        other_revenue_df["amount"]
 
         .fillna(0)
 
         .sum()
 
-        if not expense_df.empty
+        if not other_revenue_df.empty
 
         else 0
     )
@@ -465,35 +465,35 @@ def show_revenue_management_page():
     # TABLE
     # =========================
     # =========================
-    # EXPENSE MANAGEMENT
+    # Other Revenue Management
     # =========================
 
     st.divider()
 
     st.subheader(
-        "📋 Expense Management"
+        "📋 Other Revenue Management"
     )
 
-    if expense_df.empty:
+    if other_revenue_df.empty:
 
         st.info(
-            "No expense found"
+            "No other revenue found"
         )
 
     else:
 
         render_aggrid(
 
-            expense_df,
+            other_revenue_df,
 
             height=300,
 
             page_size=10
         )
 
-        expense_excel = dataframe_to_excel({
+        revenue_excel = dataframe_to_excel({
 
-            "Expenses": expense_df
+            "Other Revenue": other_revenue_df
 
         })
 
@@ -501,7 +501,7 @@ def show_revenue_management_page():
 
             label="📥 Export Expense Excel",
 
-            data=expense_excel,
+            data=revenue_excel,
 
             file_name="external_expenses.xlsx",
 
@@ -521,7 +521,7 @@ def show_revenue_management_page():
 
             row["id"]
 
-            for _, row in expense_df.iterrows()
+            for _, row in other_revenue_df.iterrows()
         }
 
         selected_expense = st.selectbox(
@@ -532,14 +532,14 @@ def show_revenue_management_page():
         )
 
         if st.button(
-            "🗑 Delete Expense"
+            "🗑 Delete Revenue"
         ):
 
             expense_id = expense_options[
                 selected_expense
             ]
 
-            ExternalExpenseService.delete_expense(
+            OtherRevenueService.delete_revenue(
                 expense_id
             )
 

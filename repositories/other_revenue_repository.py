@@ -5,10 +5,10 @@ from sqlalchemy import text
 from database.connection import engine
 
 
-class ExternalExpenseRepository:
+class OtherRevenueRepository:
 
     @staticmethod
-    def get_all_expenses():
+    def get_all_revenues():
 
         query = """
 
@@ -28,9 +28,9 @@ class ExternalExpenseRepository:
         )
 
     @staticmethod
-    def add_expense(
+    def add_revenue(
 
-        expense_date,
+        revenue_date,
 
         amount,
 
@@ -65,7 +65,7 @@ class ExternalExpenseRepository:
 
             {
 
-                "expense_date": expense_date,
+                "expense_date": revenue_date,
 
                 "amount": amount,
 
@@ -73,8 +73,8 @@ class ExternalExpenseRepository:
             })
 
     @staticmethod
-    def delete_expense(
-        expense_id
+    def delete_revenue(
+        revenue_id
     ):
 
         with engine.begin() as conn:
@@ -90,8 +90,6 @@ class ExternalExpenseRepository:
                 """),
 
                 {
-                    "id": expense_id
+                    "id": revenue_id
                 }
             )
-        
-        
