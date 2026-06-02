@@ -182,9 +182,13 @@ st.sidebar.info(
 # =========================
 # MENU BY ROLE
 # =========================
-alert_count = (
+alert_summary = (
     SidebarNotificationService
-    .get_total_alert_count()
+    .get_alert_summary()
+)
+
+alert_count = (
+    alert_summary["total"]
 )
 
 role = st.session_state["role"]
@@ -274,6 +278,55 @@ st.sidebar.divider()
 st.sidebar.info(
     "Order Management System v3"
 )
+
+if alert_count > 0:
+
+    st.sidebar.warning(
+
+        f"⚠️ Total Alerts: {alert_count}"
+    )
+
+    if alert_summary["missing_cert"] > 0:
+
+        st.sidebar.write(
+            f"📄 Missing Cert: "
+            f"{alert_summary['missing_cert']}"
+        )
+
+    if alert_summary["payment_overdue"] > 0:
+
+        st.sidebar.write(
+            f"💰 Payment Overdue: "
+            f"{alert_summary['payment_overdue']}"
+        )
+
+    if alert_summary["due_soon"] > 0:
+
+        st.sidebar.write(
+            f"📅 Due Soon: "
+            f"{alert_summary['due_soon']}"
+        )
+
+    if alert_summary["missing_invoice"] > 0:
+
+        st.sidebar.write(
+            f"🧾 Missing Invoice: "
+            f"{alert_summary['missing_invoice']}"
+        )
+
+    if alert_summary["missing_send"] > 0:
+
+        st.sidebar.write(
+            f"📨 Missing Send: "
+            f"{alert_summary['missing_send']}"
+        )
+
+    if alert_summary["pending_return"] > 0:
+
+        st.sidebar.write(
+            f"📬 Pending Return: "
+            f"{alert_summary['pending_return']}"
+        )
 
 # =========================
 # LOGOUT

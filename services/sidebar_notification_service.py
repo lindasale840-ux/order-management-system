@@ -12,16 +12,14 @@ import pandas as pd
 class SidebarNotificationService:
 
     @staticmethod
-    def get_total_alert_count():
-
-        total_alert = 0
+    def get_alert_summary():
 
         df = (
             FinanceService
             .build_finance_dataframe()
         )
 
-        total_alert += len(
+        missing_cert = len(
 
             df[
                 df["cert_workflow_status"]
@@ -30,7 +28,7 @@ class SidebarNotificationService:
             ]
         )
 
-        total_alert += len(
+        payment_overdue = len(
 
             df[
                 df["payment_overdue"]
@@ -39,7 +37,7 @@ class SidebarNotificationService:
             ]
         )
 
-        total_alert += len(
+        due_soon = len(
 
             df[
                 df["cert_due_soon"]
@@ -48,7 +46,7 @@ class SidebarNotificationService:
             ]
         )
 
-        total_alert += len(
+        missing_invoice = len(
 
             df[
                 df["order_status"]
@@ -57,9 +55,8 @@ class SidebarNotificationService:
             ]
         )
 
-        # =====================
-        # DOCUMENT TRACKING
-        # =====================
+        missing_send = 0
+        pending_return = 0
 
         tracking_df = (
             DocumentTrackingRepository
@@ -67,6 +64,59 @@ class SidebarNotificationService:
         )
 
         today = pd.Timestamp.today()
+
+        # =========================
+        # Missing Send
+        # =========================
+
+        sent_orders = set()
+
+        if not tracking_df.empty:
+
+            sent_orders = set(
+                tracking_df[
+                    "order_number"
+                ].astype(str)
+            )
+
+        cert_orders_df = df[
+
+            df["cert_status"]
+            .notna()
+
+        ].copy()
+
+        cert_orders_df["cert_status"] = pd.to_datetime(
+            cert_orders_df["cert_status"],
+            errors="coerce"
+        )
+
+        missing_send_df = cert_orders_df[
+
+            (
+                today
+                -
+                cert_orders_df[
+                    "cert_status"
+                ]
+            ).dt.days.gt(7)
+
+            &
+
+            ~cert_orders_df[
+                "order_number"
+            ].astype(str).isin(
+                sent_orders
+            )
+        ]
+
+        missing_send = len(
+            missing_send_df
+        )
+
+        # =========================
+        # Pending Return
+        # =========================
 
         if not tracking_df.empty:
 
@@ -95,11 +145,50 @@ class SidebarNotificationService:
                         "sent_date"
                     ]
                 ).dt.days.gt(7)
-
             ]
 
-            total_alert += len(
+            pending_return = len(
                 pending_return_df
             )
 
-        return total_alert
+        total_alert = (
+
+            missing_cert
+
+            +
+
+            payment_overdue
+
+            +
+
+            due_soon
+
+            +
+
+            missing_invoice
+
+            +
+
+            missing_send
+
+            +
+
+            pending_return
+        )
+
+        return {
+
+            "total": total_alert,
+
+            "missing_cert": missing_cert,
+
+            "payment_overdue": payment_overdue,
+
+            "due_soon": due_soon,
+
+            "missing_invoice": missing_invoice,
+
+            "missing_send": missing_send,
+
+            "pending_return": pending_return
+        }
