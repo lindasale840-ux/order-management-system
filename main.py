@@ -1,7 +1,7 @@
 import streamlit as st
 import traceback
 
-ENABLE_CHART_PAGE = False
+ENABLE_CHART_PAGE = True
 
 from pages.login_page import (
     show_login_page
@@ -206,7 +206,7 @@ if role == "ADMIN":
 
         menu_options.insert(
                 5,
-                "📈 Chart Customer"
+                "📈 Analytics Dashboard"
     )
         
 elif role == "MANAGER":
@@ -238,7 +238,7 @@ else:
 
         "🔔 Notification Center",
 
-        "📈 Chart Customer",
+        "📈 Analytics Dashboard"
 
         "💵 Revenue Management",
 
@@ -301,7 +301,7 @@ try:
 
     elif (
 
-        page == "📈 Chart Customer"
+        page == "📈 Analytics Dashboard"
 
         and
 
