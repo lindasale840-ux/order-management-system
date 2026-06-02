@@ -456,7 +456,7 @@ def show_revenue_management_page():
 
             fig,
 
-            use_container_width=True
+            width="stretch"
         )
 
     st.divider()

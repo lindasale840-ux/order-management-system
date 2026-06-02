@@ -1,5 +1,7 @@
 import pandas as pd
 
+import streamlit as st
+
 from repositories.order_repository import (
     OrderRepository
 )
@@ -12,7 +14,12 @@ from repositories.payment_repository import (
 class FinanceService:
 
     @staticmethod
+    @st.cache_data(ttl=60)
     def build_finance_dataframe():
+
+        print(
+            "FinanceService.build_finance_dataframe() called"
+        )
 
         orders_df = (
             OrderRepository.get_all_orders()

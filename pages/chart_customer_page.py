@@ -148,7 +148,7 @@ def show_chart_customer_page():
 
                 fig,
 
-                use_container_width=True
+                width="stretch"
             )
 
             render_aggrid(
@@ -214,7 +214,7 @@ def show_chart_customer_page():
 
                 fig,
 
-                use_container_width=True
+                width="stretch"
             )
 
             
@@ -260,7 +260,7 @@ def show_chart_customer_page():
 
             fig,
 
-            use_container_width=True
+            width="stretch"
         )
 
         st.subheader(
@@ -321,7 +321,7 @@ def show_chart_customer_page():
 
             fig,
 
-            use_container_width=True
+            width="stretch"
         )
 
         st.divider()
@@ -363,7 +363,7 @@ def show_chart_customer_page():
 
             fig,
 
-            use_container_width=True
+            width="stretch"
         )
 
     # ==================================================
@@ -409,7 +409,7 @@ def show_chart_customer_page():
 
             fig,
 
-            use_container_width=True
+            width="stretch"
         )
 
         st.divider()
@@ -451,7 +451,7 @@ def show_chart_customer_page():
 
             fig,
 
-            use_container_width=True
+            width="stretch"
         )
 
         st.divider()
@@ -493,6 +493,6 @@ def show_chart_customer_page():
 
             fig,
 
-            use_container_width=True
+            width="stretch"
         )
 

@@ -111,7 +111,7 @@ def show_user_management_page():
 
         users_df,
 
-        use_container_width=True
+        width="stretch"
     )
 
     st.divider()

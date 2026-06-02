@@ -95,7 +95,7 @@ def show_dashboard_page():
 
             st.dataframe(
                 excel_df,
-                use_container_width=True
+                width="stretch"
             )
 
             if st.button(
