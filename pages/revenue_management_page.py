@@ -3,23 +3,31 @@ import pandas as pd
 import plotly.express as px
 
 from services.finance_service import (
-    FinanceService
+FinanceService
 )
 
 from repositories.order_repository import (
-    OrderRepository
+OrderRepository
+)
+
+from repositories.external_expense_repository import (
+ExternalExpenseRepository
+)
+
+from services.external_expense_service import (
+ExternalExpenseService
 )
 
 from components.aggrid_table import (
-    render_aggrid
+render_aggrid
 )
 
 from utils.excel_export import (
-    dataframe_to_excel
+dataframe_to_excel
 )
 
-
 def show_revenue_management_page():
+
 
     st.title(
         "💵 Revenue Management"
@@ -43,7 +51,7 @@ def show_revenue_management_page():
         return
 
     # =========================
-    # FILTER
+    # CUSTOMER FILTER
     # =========================
 
     customer_df = (
@@ -73,7 +81,7 @@ def show_revenue_management_page():
             == selected_customer
         ]
 
-            # =========================
+    # =========================
     # YEAR / MONTH FILTER
     # =========================
 
@@ -158,11 +166,126 @@ def show_revenue_management_page():
 
             selected_month
         ]
+
+    # =========================
+    # EXTERNAL EXPENSE INPUT
+    # =========================
+
+    st.divider()
+
+    st.subheader(
+        "💸 External Expense"
+    )
+
+    col_exp1, col_exp2, col_exp3 = (
+        st.columns(3)
+    )
+
+    with col_exp1:
+
+        expense_date = st.date_input(
+            "Expense Date"
+        )
+
+    with col_exp2:
+
+        expense_amount = st.number_input(
+
+            "Amount",
+
+            min_value=0.0,
+
+            value=0.0
+        )
+
+    with col_exp3:
+
+        expense_note = st.text_input(
+            "Note"
+        )
+
+    if st.button(
+        "Add Expense"
+    ):
+
+        if expense_amount <= 0:
+
+            st.error(
+                "Amount must > 0"
+            )
+
+        else:
+
+            ExternalExpenseService.add_expense(
+
+                expense_date,
+
+                expense_amount,
+
+                expense_note
+            )
+
+            st.success(
+                "Expense added"
+            )
+
+            st.rerun()
+
+    # =========================
+    # LOAD EXPENSE DATA
+    # =========================
+
+    expense_df = (
+        ExternalExpenseRepository
+        .get_all_expenses()
+    )
+
+    if not expense_df.empty:
+
+        expense_df["expense_date"] = (
+            pd.to_datetime(
+                expense_df["expense_date"],
+                errors="coerce"
+            )
+        )
+
+        if selected_year != "ALL":
+
+            expense_df = expense_df[
+
+                expense_df[
+                    "expense_date"
+                ]
+                .dt.year
+
+                ==
+
+                selected_year
+            ]
+
+        if selected_month != "ALL":
+
+            expense_df = expense_df[
+
+                expense_df[
+                    "expense_date"
+                ]
+                .dt.month
+
+                ==
+
+                selected_month
+            ]
+
     # =========================
     # KPI
     # =========================
 
-    total_revenue = (
+    # =========================
+    # KPI
+    # =========================
+
+    calibration_revenue = (
         df["total"]
         .fillna(0)
         .sum()
@@ -212,15 +335,37 @@ def show_revenue_management_page():
         .sum()
     )
 
+    external_revenue = (
+
+        expense_df["amount"]
+
+        .fillna(0)
+
+        .sum()
+
+        if not expense_df.empty
+
+        else 0
+    )
+
+    total_revenue = (
+
+        calibration_revenue
+
+        +
+
+        external_revenue
+    )
+
     col1, col2, col3 = st.columns(3)
 
     with col1:
 
         st.metric(
 
-            "Total Revenue",
+            "Calibration Revenue",
 
-            f"{total_revenue:,.0f}"
+            f"{calibration_revenue:,.0f}"
         )
 
     with col2:
@@ -241,7 +386,7 @@ def show_revenue_management_page():
             f"{pending_revenue:,.0f}"
         )
 
-    col4, col5 = st.columns(2)
+    col4, col5, col6 = st.columns(3)
 
     with col4:
 
@@ -260,6 +405,22 @@ def show_revenue_management_page():
 
             f"{total_commission:,.0f}"
         )
+
+    with col6:
+
+        st.metric(
+
+            "Other Revenue",
+
+            f"{external_revenue:,.0f}"
+        )
+
+    st.metric(
+
+        "Total Revenue",
+
+        f"{total_revenue:,.0f}"
+    )
 
     st.divider()
 
@@ -303,7 +464,90 @@ def show_revenue_management_page():
     # =========================
     # TABLE
     # =========================
+    # =========================
+    # EXPENSE MANAGEMENT
+    # =========================
 
+    st.divider()
+
+    st.subheader(
+        "📋 Expense Management"
+    )
+
+    if expense_df.empty:
+
+        st.info(
+            "No expense found"
+        )
+
+    else:
+
+        render_aggrid(
+
+            expense_df,
+
+            height=300,
+
+            page_size=10
+        )
+
+        expense_excel = dataframe_to_excel({
+
+            "Expenses": expense_df
+
+        })
+
+        st.download_button(
+
+            label="📥 Export Expense Excel",
+
+            data=expense_excel,
+
+            file_name="external_expenses.xlsx",
+
+            mime=(
+                "application/vnd.openxmlformats-"
+                "officedocument.spreadsheetml.sheet"
+            )
+        )
+
+        st.divider()
+
+        expense_options = {
+
+            f"ID {row['id']} | "
+            f"{row['expense_date']} | "
+            f"{row['amount']:,.0f}":
+
+            row["id"]
+
+            for _, row in expense_df.iterrows()
+        }
+
+        selected_expense = st.selectbox(
+
+            "Select Expense To Delete",
+
+            list(expense_options.keys())
+        )
+
+        if st.button(
+            "🗑 Delete Expense"
+        ):
+
+            expense_id = expense_options[
+                selected_expense
+            ]
+
+            ExternalExpenseService.delete_expense(
+                expense_id
+            )
+
+            st.success(
+                "Expense deleted"
+            )
+
+            st.rerun()
     display_df = df[
 
         [
@@ -363,3 +607,4 @@ def show_revenue_management_page():
             "officedocument.spreadsheetml.sheet"
         )
     )
+

@@ -113,7 +113,29 @@ def initialize_database():
 
         """))
 
-                # =========================
+        # =========================
+        # EXTERNAL EXPENSES
+        # =========================
+
+        conn.execute(text("""
+
+        CREATE TABLE IF NOT EXISTS external_expenses (
+
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+            expense_date DATE,
+
+            amount FLOAT,
+
+            note TEXT,
+
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+
+        )
+
+        """))
+
+        # =========================
         # ERROR LOGS
         # =========================
 
