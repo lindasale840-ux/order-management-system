@@ -28,7 +28,9 @@ def render_aggrid(
 
         resizable=True,
 
-        floatingFilter=True
+        floatingFilter=True,
+
+        editable=False
     )
 
     # =========================
@@ -51,14 +53,16 @@ def render_aggrid(
     # =========================
 
     gb.configure_selection(
-        selection_mode="single"
+        selection_mode="multiple",
+        use_checkbox=False
     )
 
     grid_options = gb.build()
 
-    # =========================
-    # RENDER GRID
-    # =========================
+    # Cho phép copy
+    grid_options["enableRangeSelection"] = True
+    grid_options["enableCellTextSelection"] = True
+    grid_options["ensureDomOrder"] = True
 
     return AgGrid(
 

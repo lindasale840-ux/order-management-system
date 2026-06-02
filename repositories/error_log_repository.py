@@ -16,31 +16,29 @@ class ErrorLogRepository:
 
     ):
 
-        query = text("""
-
-        INSERT INTO error_logs (
-
-            page_name,
-
-            error_message
-
-        )
-
-        VALUES (
-
-            :page_name,
-
-            :error_message
-
-        )
-
-        """)
-
         with engine.begin() as conn:
 
             conn.execute(
 
-                query,
+                text("""
+
+                INSERT INTO error_logs (
+
+                    page_name,
+
+                    error_message
+
+                )
+
+                VALUES (
+
+                    :page_name,
+
+                    :error_message
+
+                )
+
+                """),
 
                 {
 
@@ -48,6 +46,31 @@ class ErrorLogRepository:
 
                     "error_message": error_message
                 }
+            )
+
+            # =========================
+            # KEEP ONLY LAST 20 ERRORS
+            # =========================
+
+            conn.execute(
+
+                text("""
+
+                DELETE FROM error_logs
+
+                WHERE id NOT IN (
+
+                    SELECT id
+
+                    FROM error_logs
+
+                    ORDER BY id DESC
+
+                    LIMIT 20
+
+                )
+
+                """)
             )
 
     @staticmethod
@@ -67,3 +90,17 @@ class ErrorLogRepository:
             query,
             engine
         )
+
+    @staticmethod
+    def delete_all_errors():
+
+        with engine.begin() as conn:
+
+            conn.execute(
+
+                text("""
+
+                DELETE FROM error_logs
+
+                """)
+            )
