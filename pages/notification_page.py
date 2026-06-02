@@ -1,11 +1,17 @@
 import streamlit as st
 
+import pandas as pd
+
 from services.finance_service import (
     FinanceService
 )
 
 from repositories.order_repository import (
     OrderRepository
+)
+
+from repositories.document_tracking_repository import (
+    DocumentTrackingRepository
 )
 
 from components.aggrid_table import (
@@ -123,11 +129,109 @@ def show_notification_page():
 
     ]
 
+    today = pd.Timestamp.today()
+
+    # =========================
+    # MISSING DOCUMENT SENDING
+    # =========================
+
+    tracking_df = (
+        DocumentTrackingRepository
+        .get_latest_tracking()
+    )
+
+    sent_orders = set()
+
+    if not tracking_df.empty:
+
+        sent_orders = set(
+            tracking_df[
+                "order_number"
+            ].astype(str)
+        )
+
+    missing_document_df = df.copy()
+
+    missing_document_df["cert_status"] = pd.to_datetime(
+        missing_document_df["cert_status"],
+        errors="coerce"
+    )
+
+    missing_document_df = missing_document_df[
+
+        missing_document_df["cert_status"].notna()
+
+        &
+
+        (
+            today
+            -
+            missing_document_df["cert_status"]
+        ).dt.days.gt(7)
+
+        &
+
+        (
+            ~missing_document_df[
+                "order_number"
+            ].astype(str).isin(
+                sent_orders
+            )
+        )
+    ]
+
+    pending_return_df = tracking_df.copy()
+
+    if not pending_return_df.empty:
+
+        pending_return_df["sent_date"] = pd.to_datetime(
+            pending_return_df["sent_date"],
+            errors="coerce"
+        )
+
+        pending_return_df["received_date"] = pd.to_datetime(
+            pending_return_df["received_date"],
+            errors="coerce"
+        )
+
+        pending_return_df = pending_return_df[
+
+            pending_return_df[
+                "received_date"
+            ].isna()
+
+            &
+
+            (
+                today
+                -
+                pending_return_df[
+                    "sent_date"
+                ]
+            ).dt.days.gt(7)
+        ]
+
+        if not pending_return_df.empty:
+
+            pending_return_df["sent_date"] = pd.to_datetime(
+                pending_return_df["sent_date"],
+                errors="coerce"
+            )
+
+            pending_return_df = pending_return_df[
+
+                (
+                    today
+                    -
+                    pending_return_df["sent_date"]
+                ).dt.days.gt(7)
+            ]
+
     # =========================
     # KPI SUMMARY
     # =========================
 
-    col1, col2, col3, col4 = st.columns(4)
+    col1, col2, col3, col4, col5, col6 = st.columns(6)
 
     with col1:
 
@@ -165,9 +269,27 @@ def show_notification_page():
             len(missing_invoice_df)
         )
 
+    with col5:
+
+        st.metric(
+
+            "📨 Missing Send",
+
+            len(missing_document_df)
+        )
+
+    with col6:
+
+        st.metric(
+
+            "📬 Pending Return",
+
+            len(pending_return_df)
+        )    
+
     st.divider()
 
-    tab1, tab2, tab3, tab4 = st.tabs([
+    tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
 
         f"📄 Missing Cert ({len(missing_cert_df)})",
 
@@ -175,7 +297,11 @@ def show_notification_page():
 
         f"📅 Due Soon ({len(due_soon_df)})",
 
-        f"🧾 Missing Invoice ({len(missing_invoice_df)})"
+        f"🧾 Missing Invoice ({len(missing_invoice_df)})",
+
+        f"📨 Missing Send ({len(missing_document_df)})",
+
+        f"📬 Pending Return ({len(pending_return_df)})"
 
     ])
 
@@ -206,7 +332,9 @@ def show_notification_page():
 
                 height=500,
 
-                page_size=10
+                page_size=10,
+
+                key="missing_cert_grid"
             )
 
             export_button(
@@ -243,7 +371,9 @@ def show_notification_page():
 
                 height=500,
 
-                page_size=10
+                page_size=10,
+
+                key="payment_overdue_grid"
             )
 
             export_button(
@@ -280,7 +410,9 @@ def show_notification_page():
 
                 height=500,
 
-                page_size=10
+                page_size=10,
+
+                key="due_soon_grid"
             )
 
             export_button(
@@ -317,7 +449,9 @@ def show_notification_page():
 
                 height=500,
 
-                page_size=10
+                page_size=10,
+
+                key="missing_invoice_grid"
             )
 
             export_button(
@@ -325,4 +459,80 @@ def show_notification_page():
                 missing_invoice_df,
 
                 "missing_invoice.xlsx"
+            )
+
+    # =========================
+    # TAB 5
+    # =========================
+    with tab5:
+
+        st.metric(
+
+            "Missing Document Sending",
+
+            len(missing_document_df)
+        )
+
+        if missing_document_df.empty:
+
+            st.success(
+                "No missing document sending"
+            )
+
+        else:
+
+            render_aggrid(
+
+                missing_document_df,
+
+                height=500,
+
+                page_size=10,
+
+                key="missing_document_grid"
+            )
+
+            export_button(
+
+                missing_document_df,
+
+                "missing_document_sending.xlsx"
+            )
+    # =========================
+    # TAB 6
+    # =========================
+
+    with tab6:
+
+        st.metric(
+
+            "Pending Return",
+
+            len(pending_return_df)
+        )
+
+        if pending_return_df.empty:
+
+            st.success(
+                "No pending return"
+            )
+
+        else:
+
+            render_aggrid(
+
+                pending_return_df,
+
+                height=500,
+
+                page_size=10,
+
+                key="pending_return_grid"
+            )
+
+            export_button(
+
+                pending_return_df,
+
+                "pending_return.xlsx"
             )

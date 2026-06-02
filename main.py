@@ -51,6 +51,10 @@ from pages.backup_page import (
     show_backup_page
 )
 
+from pages.document_tracking_page import (
+    show_document_tracking_page
+)
+
 from database.init_db import (
     initialize_database
 )
@@ -190,6 +194,8 @@ if role == "ADMIN":
 
         "🔔 Notification Center",
 
+        "📨 Document Tracking",
+
 
         "💵 Revenue Management",
 
@@ -223,6 +229,8 @@ elif role == "MANAGER":
 
         "🔔 Notification Center",
 
+        "📨 Document Tracking",
+
         "💵 Revenue Management",
 
         "📝 Logs"
@@ -238,7 +246,7 @@ else:
 
         "🔔 Notification Center",
 
-        "📈 Analytics Dashboard"
+        "📈 Analytics Dashboard",
 
         "💵 Revenue Management",
 
@@ -310,6 +318,10 @@ try:
     ):
 
         show_chart_customer_page()
+
+    elif page == "📨 Document Tracking":
+
+        show_document_tracking_page()    
 
     elif page == "💵 Revenue Management":
 

@@ -156,6 +156,32 @@ def initialize_database():
         """))
 
         # =========================
+        # DOCUMENT TRACKING
+        # =========================
+
+        conn.execute(text("""
+
+        CREATE TABLE IF NOT EXISTS document_tracking (
+
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+            order_number TEXT,
+
+            sent_date DATE,
+
+            received_date DATE,
+
+            note TEXT,
+
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+
+        )
+
+        """))
+
+        # =========================
         # INDEXES
         # =========================
 

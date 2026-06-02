@@ -9,7 +9,8 @@ def render_aggrid(
     dataframe,
     height=500,
     pagination=True,
-    page_size=5
+    page_size=5,
+    key=None
 ):
 
     gb = GridOptionsBuilder.from_dataframe(
@@ -73,6 +74,8 @@ def render_aggrid(
         height=height,
 
         width="100%",
+        
+        key=key,
 
         update_mode=GridUpdateMode.NO_UPDATE,
 
