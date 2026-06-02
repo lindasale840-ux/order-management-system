@@ -55,6 +55,10 @@ from pages.document_tracking_page import (
     show_document_tracking_page
 )
 
+from services.sidebar_notification_service import (
+    SidebarNotificationService
+)
+
 from database.init_db import (
     initialize_database
 )
@@ -178,6 +182,11 @@ st.sidebar.info(
 # =========================
 # MENU BY ROLE
 # =========================
+alert_count = (
+    SidebarNotificationService
+    .get_total_alert_count()
+)
+
 role = st.session_state["role"]
 
 if role == "ADMIN":
@@ -192,7 +201,7 @@ if role == "ADMIN":
 
         "📑 Finance",
 
-        "🔔 Notification Center",
+        f"🔔 Notification Center ({alert_count})",
 
         "📨 Document Tracking",
 
@@ -227,7 +236,7 @@ elif role == "MANAGER":
 
         "📑 Finance",
 
-        "🔔 Notification Center",
+        f"🔔 Notification Center ({alert_count})",
 
         "📨 Document Tracking",
 
@@ -244,7 +253,7 @@ else:
 
         "📑 Finance",
 
-        "🔔 Notification Center",
+        f"🔔 Notification Center ({alert_count})",
 
         "📈 Analytics Dashboard",
 
@@ -303,7 +312,7 @@ try:
 
         show_finance_page()
 
-    elif page == "🔔 Notification Center":
+    elif page.startswith("🔔 Notification Center"):
 
         show_notification_page()
 
