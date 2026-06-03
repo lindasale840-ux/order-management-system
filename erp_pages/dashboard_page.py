@@ -170,3 +170,45 @@ def show_dashboard_page():
 
         page_size=page_size
     )
+
+    st.divider()
+
+    st.subheader(
+        "🗑 Delete Order"
+    )
+
+    order_options = (
+        df["order_number"]
+        .tolist()
+    )
+
+    if order_options:
+
+        selected_delete_order = st.selectbox(
+
+            "Select Order To Delete",
+
+            order_options,
+
+            key="delete_order_select"
+        )
+
+        if st.button(
+            "🗑 Delete Order"
+        ):
+
+            DashboardService.delete_order(
+                selected_delete_order
+            )
+
+            st.success(
+                f"Deleted {selected_delete_order}"
+            )
+
+            st.rerun()
+
+    else:
+
+        st.info(
+            "No orders available"
+        )

@@ -173,3 +173,45 @@ class OrderRepository:
         # =========================
 
         st.cache_data.clear()
+
+    # =========================
+    # DELETE ORDER
+    # =========================
+    @staticmethod
+    def delete_order_cascade(
+        order_number
+    ):
+
+        with engine.begin() as conn:
+
+            conn.execute(
+                text("""
+                DELETE FROM payments
+                WHERE order_number = :order_number
+                """),
+                {
+                    "order_number": order_number
+                }
+            )
+
+            conn.execute(
+                text("""
+                DELETE FROM document_tracking
+                WHERE order_number = :order_number
+                """),
+                {
+                    "order_number": order_number
+                }
+            )
+
+            conn.execute(
+                text("""
+                DELETE FROM orders
+                WHERE order_number = :order_number
+                """),
+                {
+                    "order_number": order_number
+                }
+            )
+
+        st.cache_data.clear()

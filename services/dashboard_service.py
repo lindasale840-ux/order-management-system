@@ -48,3 +48,23 @@ class DashboardService:
             sale_owner={sale_owner}
             """
         )
+
+    @staticmethod
+    def delete_order(
+        order_number
+    ):
+
+        OrderRepository.delete_order_cascade(
+            order_number
+        )
+
+        LogRepository.add_log(
+
+            "DELETE_ORDER",
+
+            "",
+
+            order_number,
+
+            f"Cascade delete order {order_number}"
+        )
