@@ -6,12 +6,9 @@ conn = sqlite3.connect(
 
 cursor = conn.cursor()
 
-cursor.execute("""
-SELECT
-    order_number,
-    invoice_group
-FROM payments
-""")
+cursor.execute(
+    "PRAGMA table_info(orders)"
+)
 
 for row in cursor.fetchall():
     print(row)

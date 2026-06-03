@@ -49,6 +49,19 @@ def initialize_database():
 
             pass
 
+        try:
+
+            conn.execute(text("""
+
+            ALTER TABLE orders
+            ADD COLUMN invoice_group TEXT
+
+            """))
+
+        except Exception:
+
+            pass
+
         # =========================
         # PAYMENTS
         # =========================
