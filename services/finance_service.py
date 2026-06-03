@@ -10,6 +10,10 @@ from repositories.payment_repository import (
     PaymentRepository
 )
 
+from utils.data_permission import (
+    filter_by_sale_owner
+)
+
 
 class FinanceService:
 
@@ -23,6 +27,10 @@ class FinanceService:
 
         orders_df = (
             OrderRepository.get_all_orders()
+        )
+
+        orders_df = filter_by_sale_owner(
+            orders_df
         )
 
         payments_df = (

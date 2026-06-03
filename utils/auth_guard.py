@@ -44,3 +44,21 @@ def require_login():
         )
 
         st.stop()
+
+def require_editor():
+
+    if st.session_state.get(
+        "role"
+    ) not in [
+
+        "ADMIN",
+
+        "ASSISTANT"
+
+    ]:
+
+        st.error(
+            "No permission"
+        )
+
+        st.stop()        

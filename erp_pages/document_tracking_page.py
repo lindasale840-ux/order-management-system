@@ -22,8 +22,14 @@ from utils.excel_export import (
     dataframe_to_excel
 )
 
+from utils.auth_guard import (
+    require_editor
+)
+
 
 def show_document_tracking_page():
+
+    require_editor()
 
     st.title(
         "📨 Document Tracking"

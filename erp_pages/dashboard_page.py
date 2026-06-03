@@ -8,7 +8,17 @@ from components.pagination import (
     paginate_dataframe
 )
 
+from utils.data_permission import (
+    filter_by_sale_owner
+)
+
+from utils.auth_guard import (
+    require_editor
+)
+
 def show_dashboard_page():
+
+    require_editor()
 
     st.title("Dashboard")
 
@@ -129,6 +139,8 @@ def show_dashboard_page():
     st.divider()
 
     df = OrderRepository.get_all_orders()
+
+    df = filter_by_sale_owner(df)
 
     st.metric(
         "Total Orders",

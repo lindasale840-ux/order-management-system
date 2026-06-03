@@ -14,14 +14,18 @@ from services.payment_service import (
     PaymentService
 )
 
+from utils.data_permission import (
+    filter_by_sale_owner
+)
+
 from utils.auth_guard import (
-    require_admin
+    require_editor
 )
 
 
 def show_payment_page():
 
-    require_admin()
+    require_editor()
 
     st.title("Payment")
 
@@ -44,6 +48,10 @@ def show_payment_page():
 
         order_df = (
             OrderRepository.get_all_orders()
+        )
+
+        order_df = filter_by_sale_owner(
+            order_df
         )
 
     else:
