@@ -97,6 +97,17 @@ def show_payment_page():
             .to_dict()
         )
 
+    invoice_group = st.text_input(
+        "Invoice Group",
+        value=str(
+            existing_data.get(
+                "invoice_group",
+                ""
+            ) or ""
+        )
+    )
+    
+
     # =========================
     # LOAD SAVED DATES
     # =========================
@@ -233,6 +244,8 @@ def show_payment_page():
         PaymentService.save_invoice(
 
             selected_order,
+
+            invoice_group,
 
             invoice_date,
 

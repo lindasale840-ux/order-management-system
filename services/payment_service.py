@@ -13,6 +13,7 @@ class PaymentService:
     def save_invoice(
         order_number,
         invoice_date,
+        invoice_group,
         payment_terms,
         payment_status,
         total,
@@ -27,6 +28,8 @@ class PaymentService:
         PaymentRepository.upsert_payment(
 
             order_number,
+
+            invoice_group,
 
             invoice_date,
 
@@ -54,6 +57,7 @@ class PaymentService:
             f"""
             Save invoice:
             order={order_number},
+            invoice_group={invoice_group},
             invoice_date={invoice_date},
             payment_terms={payment_terms},
             payment_status={payment_status},

@@ -35,6 +35,8 @@ class PaymentRepository:
 
         invoice_date,
 
+        invoice_group,
+
         payment_terms,
 
         payment_status,
@@ -57,6 +59,8 @@ class PaymentRepository:
                 order_number,
 
                 invoice_date,
+                              
+                invoice_group,              
 
                 payment_terms,
 
@@ -77,6 +81,8 @@ class PaymentRepository:
                 :order_number,
 
                 :invoice_date,
+                              
+                :invoice_group,             
 
                 :payment_terms,
 
@@ -96,6 +102,8 @@ class PaymentRepository:
             DO UPDATE SET
 
                 invoice_date=excluded.invoice_date,
+                              
+                invoice_group=excluded.invoice_group,              
 
                 payment_terms=excluded.payment_terms,
 
@@ -118,6 +126,8 @@ class PaymentRepository:
                 "order_number": order_number,
 
                 "invoice_date": invoice_date,
+
+                "invoice_group": invoice_group,
 
                 "payment_terms": payment_terms,
 
