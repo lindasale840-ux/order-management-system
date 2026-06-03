@@ -51,5 +51,8 @@ class AuthService:
             user["username"],
 
             "role":
-            user["role"]
+            user["role"],
+
+            "sale_owner":
+            user["sale_owner"]
         }

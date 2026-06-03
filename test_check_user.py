@@ -7,7 +7,7 @@ conn = sqlite3.connect(
 cursor = conn.cursor()
 
 cursor.execute(
-    "PRAGMA table_info(users)"
+    "PRAGMA table_info(orders)"
 )
 
 for row in cursor.fetchall():

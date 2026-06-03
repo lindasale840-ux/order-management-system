@@ -36,6 +36,19 @@ def initialize_database():
 
         """))
 
+        try:
+
+            conn.execute(text("""
+
+            ALTER TABLE orders
+            ADD COLUMN sale_owner TEXT
+
+            """))
+
+        except Exception:
+
+            pass
+
         # =========================
         # PAYMENTS
         # =========================
@@ -112,6 +125,19 @@ def initialize_database():
         )
 
         """))
+
+        try:
+
+            conn.execute(text("""
+
+            ALTER TABLE users
+            ADD COLUMN sale_owner TEXT
+
+            """))
+
+        except Exception:
+
+            pass
 
         # =========================
         # EXTERNAL EXPENSES

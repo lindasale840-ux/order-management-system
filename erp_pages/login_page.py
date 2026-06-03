@@ -53,4 +53,8 @@ def show_login_page():
             "role"
         ] = user["role"]
 
+        st.session_state[
+            "sale_owner"
+        ] = user["sale_owner"]
+
         st.rerun()

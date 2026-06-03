@@ -63,7 +63,9 @@ class UserRepository:
 
         password_hash,
 
-        role
+        role,
+
+        sale_owner
 
     ):
 
@@ -75,7 +77,9 @@ class UserRepository:
 
             password_hash,
 
-            role
+            role,
+                     
+            sale_owner         
 
         )
 
@@ -85,7 +89,9 @@ class UserRepository:
 
             :password_hash,
 
-            :role
+            :role,
+                     
+            :sale_owner          
 
         )
 
@@ -103,7 +109,9 @@ class UserRepository:
 
                     "password_hash": password_hash,
 
-                    "role": role
+                    "role": role,
+
+                    "sale_owner": sale_owner
                 }
             )
 

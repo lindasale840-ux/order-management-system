@@ -39,13 +39,17 @@ def show_user_management_page():
 
         [
 
-            "USER",
+            "ADMIN",
 
-            "MANAGER",
+            "SALE",
 
-            "ADMIN"
+            "ASSISTANT"
         ]
     )
+
+    sale_owner = st.text_input(
+    "Sale Owner"
+)
 
     if st.button(
         "Create User"
@@ -81,15 +85,27 @@ def show_user_management_page():
 
             else:
 
+                if role == "ADMIN":
+
+                    final_sale_owner = "ALL"
+
+                elif role == "SALE":
+
+                    final_sale_owner = username
+
+                else:
+
+                    final_sale_owner = sale_owner
+
                 UserRepository.create_user(
 
                     username,
 
-                    hash_password(
-                        password
-                    ),
+                    hash_password(password),
 
-                    role
+                    role,
+
+                    final_sale_owner
                 )
 
                 st.success(
