@@ -103,7 +103,9 @@ class OrderRepository:
 
         measurement_date,
 
-        cert_status
+        cert_status,
+
+        sale_owner
     ):
 
         with engine.begin() as conn:
@@ -118,7 +120,9 @@ class OrderRepository:
 
                 measurement_date,
 
-                cert_status
+                cert_status,
+                              
+                sale_owner                
 
             )
 
@@ -130,7 +134,9 @@ class OrderRepository:
 
                 :measurement_date,
 
-                :cert_status
+                :cert_status,
+                              
+                :sale_owner                
             )
 
             ON CONFLICT(order_number)
@@ -142,6 +148,8 @@ class OrderRepository:
                 measurement_date=excluded.measurement_date,
 
                 cert_status=excluded.cert_status,
+                              
+                sale_owner=excluded.sale_owner,              
 
                 updated_at=CURRENT_TIMESTAMP
 
@@ -155,7 +163,9 @@ class OrderRepository:
 
                 "measurement_date": measurement_date,
 
-                "cert_status": cert_status
+                "cert_status": cert_status,
+
+                "sale_owner": sale_owner
             })
 
         # =========================

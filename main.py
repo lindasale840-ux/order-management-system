@@ -228,7 +228,7 @@ if role == "ADMIN":
                 "📈 Analytics Dashboard"
     )
         
-elif role == "MANAGER":
+elif role == "ASSISTANT":
 
     menu_options = [
 
@@ -249,7 +249,7 @@ elif role == "MANAGER":
         "📝 Logs"
     ]        
 
-else:
+elif role == "SALE":
 
     menu_options = [
 

@@ -14,7 +14,8 @@ class DashboardService:
         customer_name,
         order_number,
         measurement_date,
-        cert_status
+        cert_status,
+        sale_owner
     ):
 
         OrderRepository.upsert_order(
@@ -25,7 +26,9 @@ class DashboardService:
 
             measurement_date,
 
-            cert_status
+            cert_status,
+
+            sale_owner
         )
 
         LogRepository.add_log(

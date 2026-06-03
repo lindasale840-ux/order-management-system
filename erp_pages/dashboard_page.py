@@ -75,7 +75,9 @@ def show_dashboard_page():
 
                 measurement_date,
 
-                cert_status
+                cert_status,
+
+                st.session_state["sale_owner"]
             )
 
             st.success("Order synced")
@@ -115,7 +117,9 @@ def show_dashboard_page():
                         row.get(
                             "cert_status",
                             None
-                        )
+                        ),
+
+                        st.session_state["sale_owner"]
                     )
 
                 st.success(
