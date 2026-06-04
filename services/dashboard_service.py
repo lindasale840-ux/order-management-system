@@ -39,14 +39,7 @@ class DashboardService:
 
             order_number,
 
-            f"""
-            Sync order:
-            customer={customer_name},
-            order={order_number},
-            measurement_date={measurement_date},
-            cert_status={cert_status},
-            sale_owner={sale_owner}
-            """
+            f"{customer_name} | {order_number}"
         )
 
     @staticmethod

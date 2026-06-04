@@ -65,16 +65,5 @@ class PaymentService:
 
             order_number,
 
-            f"""
-            Save invoice:
-            order={order_number},
-            invoice_group={invoice_group},
-            invoice_date={invoice_date},
-            payment_terms={payment_terms},
-            payment_status={payment_status},
-            total={total},
-            commission_percent={commission_percent},
-            commission_actual={commission_actual},
-            note={note}
-            """
+            f"{invoice_group} | {total:,.0f}"
         )

@@ -91,6 +91,75 @@ def show_logs_page():
         LogRepository.get_logs()
     )
 
+    action_icon = {
+
+        "SYNC_ORDER": "📊",
+
+        "SAVE_INVOICE": "💰",
+
+        "DELETE_ORDER": "🗑",
+
+        "ADD_TRACKING": "📨",
+
+        "DELETE_TRACKING": "❌"
+    }
+
+    df["action"] = df["action"].apply(
+
+        lambda x:
+        f"{action_icon.get(x,'📄')} {x}"
+    )
+
+    # =========================
+    # SEARCH + FILTER
+    # =========================
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+
+        search_text = st.text_input(
+            "🔍 Search"
+        )
+
+    with col2:
+
+        action_list = ["ALL"] + sorted(
+            df["action"]
+            .dropna()
+            .unique()
+            .tolist()
+        )
+
+        selected_action = st.selectbox(
+            "Action",
+            action_list
+        )
+
+    if search_text:
+
+        mask = (
+            df.astype(str)
+            .apply(
+                lambda col:
+                col.str.contains(
+                    search_text,
+                    case=False,
+                    na=False
+                )
+            )
+            .any(axis=1)
+        )
+
+        df = df[mask]
+
+    if selected_action != "ALL":
+
+        df = df[
+            df["action"]
+            == selected_action
+        ]
+
     # =========================
     # GRID
     # =========================
