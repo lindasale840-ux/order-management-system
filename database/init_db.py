@@ -131,6 +131,19 @@ def initialize_database():
 
         """))
 
+        try:
+
+            conn.execute(text("""
+
+            ALTER TABLE logs
+            ADD COLUMN username TEXT
+
+            """))
+
+        except Exception:
+
+            pass
+
         # =========================
         # USERS
         # =========================

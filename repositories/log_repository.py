@@ -1,5 +1,7 @@
 import pandas as pd
 
+import streamlit as st
+
 from sqlalchemy import text
 
 from database.connection import engine
@@ -14,11 +16,18 @@ class LogRepository:
         action,
         customer_name,
         order_number,
-        description
+        description,
+        username="SYSTEM"
     ):
+        
+        username = st.session_state.get(
+            "username",
+            "SYSTEM"
+        )
 
         query = text("""
         INSERT INTO logs (
+            username,          
             action,
             customer_name,
             order_number,
@@ -26,6 +35,7 @@ class LogRepository:
         )
 
         VALUES (
+            :username,         
             :action,
             :customer_name,
             :order_number,
@@ -38,6 +48,7 @@ class LogRepository:
             conn.execute(
                 query,
                 {
+                    "username": username,
                     "action": action,
                     "customer_name": customer_name,
                     "order_number": order_number,
