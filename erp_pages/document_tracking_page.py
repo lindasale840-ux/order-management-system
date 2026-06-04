@@ -156,7 +156,39 @@ def show_document_tracking_page():
         )
 
         return
+    
 
+    # =========================
+    # SEARCH
+    # =========================
+
+    search_text = st.text_input(
+    "🔍 Search Order / Customer / Note"
+    )
+
+    if search_text:
+
+        keyword = search_text.lower()
+
+        tracking_df = tracking_df[
+
+            tracking_df.astype(str)
+
+            .apply(
+                lambda col:
+                col.str.lower()
+            )
+
+            .apply(
+                lambda col:
+                col.str.contains(
+                    keyword,
+                    na=False
+                )
+            )
+
+            .any(axis=1)
+        ]
     render_aggrid(
 
         tracking_df,

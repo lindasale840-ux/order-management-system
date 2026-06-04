@@ -14,11 +14,19 @@ class DocumentTrackingRepository:
 
         query = """
 
-        SELECT *
+        SELECT
 
-        FROM document_tracking
+            dt.*,
 
-        ORDER BY id DESC
+            o.customer_name
+
+        FROM document_tracking dt
+
+        LEFT JOIN orders o
+
+            ON dt.order_number = o.order_number
+
+        ORDER BY dt.id DESC
 
         """
 
