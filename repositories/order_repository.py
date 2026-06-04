@@ -215,3 +215,34 @@ class OrderRepository:
             )
 
         st.cache_data.clear()
+
+
+    @staticmethod
+    def update_invoice_group(
+        order_number,
+        invoice_group
+    ):
+
+        with engine.begin() as conn:
+
+            conn.execute(
+
+                text("""
+
+                UPDATE orders
+
+                SET invoice_group = :invoice_group
+
+                WHERE order_number = :order_number
+
+                """),
+
+                {
+                    "invoice_group": invoice_group,
+                    "order_number": order_number
+                }
+            )
+
+        st.cache_data.clear()
+
+

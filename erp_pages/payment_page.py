@@ -114,35 +114,41 @@ def show_payment_page():
 
     invoice_date_value = date.today()
 
-    if existing_data.get(
-        "invoice_date"
+    invoice_date_raw = (
+        existing_data.get(
+            "invoice_date"
+        )
+    )
+
+    if pd.notna(
+        invoice_date_raw
     ):
 
         invoice_date_value = (
             pd.to_datetime(
-                existing_data[
-                    "invoice_date"
-                ]
+                invoice_date_raw
             ).date()
         )
 
     payment_status_saved = (
-        existing_data.get(
-            "payment_status"
-        )
+    existing_data.get(
+        "payment_status"
     )
+)
 
-    unpaid_default = pd.isna(
+    if pd.isna(
         payment_status_saved
-    )
+    ):
 
-    if unpaid_default:
+        unpaid_default = True
 
         payment_status_value = (
             date.today()
         )
 
     else:
+
+        unpaid_default = False
 
         payment_status_value = (
             pd.to_datetime(
@@ -245,9 +251,9 @@ def show_payment_page():
 
             selected_order,
 
-            invoice_group,
-
             invoice_date,
+
+            invoice_group,
 
             payment_terms,
 

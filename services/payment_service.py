@@ -6,6 +6,10 @@ from repositories.log_repository import (
     LogRepository
 )
 
+from repositories.order_repository import (
+    OrderRepository
+)
+
 
 class PaymentService:
 
@@ -29,9 +33,9 @@ class PaymentService:
 
             order_number,
 
-            invoice_group,
-
             invoice_date,
+
+            invoice_group,
 
             payment_terms,
 
@@ -44,6 +48,13 @@ class PaymentService:
             commission_actual,
 
             note
+        )
+
+        OrderRepository.update_invoice_group(
+
+            order_number,
+
+            invoice_group
         )
 
         LogRepository.add_log(
