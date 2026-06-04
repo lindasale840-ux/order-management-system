@@ -147,6 +147,77 @@ def show_dashboard_page():
         len(df)
     )
 
+    # =========================
+    # SEARCH
+    # =========================
+
+    search_text = st.text_input(
+        "🔍 Search Customer / Order / Invoice Group"
+    )
+
+    if search_text:
+
+        search_text = (
+            search_text
+            .strip()
+            .lower()
+        )
+
+        customer_match = (
+
+            df["customer_name"]
+
+            .astype(str)
+
+            .str.lower()
+
+            .str.contains(
+                search_text,
+                na=False
+            )
+        )
+
+        order_match = (
+
+            df["order_number"]
+
+            .astype(str)
+
+            .str.lower()
+
+            .str.contains(
+                search_text,
+                na=False
+            )
+        )
+
+        invoice_match = (
+
+            df["invoice_group"]
+
+            .astype(str)
+
+            .str.lower()
+
+            .str.contains(
+                search_text,
+                na=False
+            )
+        )
+
+        df = df[
+
+            customer_match
+
+            |
+
+            order_match
+
+            |
+
+            invoice_match
+        ]
+
     from components.aggrid_table import (
     render_aggrid
     )
