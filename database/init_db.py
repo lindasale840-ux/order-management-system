@@ -247,6 +247,48 @@ def initialize_database():
         """))
 
         # =========================
+        # EQUIPMENT TRACKING
+        # =========================
+
+        conn.execute(text("""
+
+        CREATE TABLE IF NOT EXISTS equipment_tracking (
+
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+            order_number TEXT,
+
+            service_type TEXT,
+
+            direct_to_customer INTEGER DEFAULT 0,
+
+            subcontract_name TEXT,
+
+            customer_send_date DATE,
+
+            gst_receive_date DATE,
+
+            gst_send_sub_date DATE,
+
+            sub_receive_date DATE,
+
+            sub_send_date DATE,
+
+            gst_receive_back_date DATE,
+
+            gst_send_customer_date DATE,
+
+            customer_receive_date DATE,
+
+            note TEXT,
+
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+
+        )
+
+        """))
+
+        # =========================
         # INDEXES
         # =========================
 

@@ -71,6 +71,10 @@ from repositories.error_log_repository import (
 from erp_pages.revenue_management_page import (
     show_revenue_management_page
 )
+
+from erp_pages.equipment_tracking_page import (
+    show_equipment_tracking_page
+)
 # =========================
 # INIT DATABASE
 # =========================
@@ -209,6 +213,8 @@ if role == "ADMIN":
 
         "📨 Document Tracking",
 
+        "📦 Equipment Tracking",
+
 
         "💵 Revenue Management",
 
@@ -243,6 +249,8 @@ elif role == "ASSISTANT":
         f"🔔 Notification Center ({alert_count})",
 
         "📨 Document Tracking",
+
+        "📦 Equipment Tracking",
 
         "💵 Revenue Management",
 
@@ -384,6 +392,11 @@ try:
     elif page == "📨 Document Tracking":
 
         show_document_tracking_page()    
+
+
+    elif page == "📦 Equipment Tracking":
+
+        show_equipment_tracking_page()   
 
     elif page == "💵 Revenue Management":
 
