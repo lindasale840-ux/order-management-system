@@ -75,6 +75,10 @@ from erp_pages.revenue_management_page import (
 from erp_pages.equipment_tracking_page import (
     show_equipment_tracking_page
 )
+
+from services.equipment_tracking_notification_service import (
+    EquipmentTrackingNotificationService
+)
 # =========================
 # INIT DATABASE
 # =========================
@@ -195,6 +199,13 @@ alert_count = (
     alert_summary["total"]
 )
 
+equipment_alert_count = (
+
+    EquipmentTrackingNotificationService
+    .get_alert_count()
+
+)
+
 role = st.session_state["role"]
 
 if role == "ADMIN":
@@ -213,7 +224,7 @@ if role == "ADMIN":
 
         "📨 Document Tracking",
 
-        "📦 Equipment Tracking",
+        f"📦 Equipment Tracking ({equipment_alert_count})",
 
 
         "💵 Revenue Management",
@@ -250,7 +261,7 @@ elif role == "ASSISTANT":
 
         "📨 Document Tracking",
 
-        "📦 Equipment Tracking",
+        f"📦 Equipment Tracking ({equipment_alert_count})",
 
         "💵 Revenue Management",
 
@@ -394,7 +405,7 @@ try:
         show_document_tracking_page()    
 
 
-    elif page == "📦 Equipment Tracking":
+    elif page.startswith("📦 Equipment Tracking"):
 
         show_equipment_tracking_page()   
 
