@@ -81,3 +81,24 @@ class EquipmentTrackingService:
             subcontract={subcontract_name}
             """
         )
+
+
+    @staticmethod
+    def delete_tracking(
+        tracking_id
+    ):
+
+        EquipmentTrackingRepository.delete_tracking(
+            tracking_id
+        )
+
+        LogRepository.add_log(
+
+            "DELETE_EQUIPMENT_TRACKING",
+
+            "",
+
+            "",
+
+            f"id={tracking_id}"
+        )     

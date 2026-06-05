@@ -26,6 +26,38 @@ def show_equipment_tracking_page():
         OrderRepository.get_all_orders()
     )
 
+    customer_options = [
+
+        "ALL"
+
+    ] + sorted(
+
+        orders_df[
+            "customer_name"
+        ]
+        .dropna()
+        .unique()
+        .tolist()
+    )
+
+    selected_customer = st.selectbox(
+
+        "Customer",
+
+        customer_options
+    )
+
+    if selected_customer != "ALL":
+
+        orders_df = orders_df[
+
+            orders_df[
+                "customer_name"
+            ]
+            == selected_customer
+        ]
+
+
     order_number = st.selectbox(
 
         "Order",
@@ -52,9 +84,6 @@ def show_equipment_tracking_page():
         "Subcontract Direct To Customer"
     )
 
-    subcontract_name = st.text_input(
-        "Subcontract Name"
-    )
 
     customer_send_date = st.date_input(
         "Customer Send Date"
@@ -64,25 +93,58 @@ def show_equipment_tracking_page():
         "GST Receive Date"
     )
 
-    gst_send_sub_date = st.date_input(
-        "GST Send To Subcontract"
-    )
+    subcontract_name = ""
 
-    sub_receive_date = st.date_input(
-        "Subcontract Receive"
-    )
+    gst_send_sub_date = None
+    sub_receive_date = None
+    sub_send_date = None
+    gst_receive_back_date = None
 
-    sub_send_date = st.date_input(
-        "Subcontract Send Back"
-    )
+    if service_type == "SUBCONTRACT_LAB":
 
-    gst_receive_back_date = st.date_input(
-        "GST Receive Back"
-    )
+        subcontract_name = st.text_input(
+            "Subcontract Name"
+        )
 
-    gst_send_customer_date = st.date_input(
-        "GST Send Customer"
-    )
+        gst_send_sub_date = st.date_input(
+            "GST Send To Subcontract"
+        )
+
+        sub_receive_date = st.date_input(
+            "Subcontract Receive"
+        )
+
+        sub_send_date = st.date_input(
+            "Subcontract Send Back"
+        )
+
+        if not direct_to_customer:
+
+            gst_receive_back_date = st.date_input(
+                "GST Receive Back"
+            )
+
+    if (
+
+        service_type == "LAB"
+
+        or
+
+        (
+            service_type == "SUBCONTRACT_LAB"
+            and
+            not direct_to_customer
+        )
+
+    ):
+
+        gst_send_customer_date = st.date_input(
+            "GST Send Customer"
+        )
+
+    else:
+
+        gst_send_customer_date = None
 
     customer_receive_date = st.date_input(
         "Customer Receive"
@@ -148,3 +210,39 @@ def show_equipment_tracking_page():
 
         page_size=10
     )
+
+    st.divider()
+
+    delete_options = {
+
+        f"ID {row['id']} | "
+        f"{row['order_number']}":
+
+        row["id"]
+
+        for _, row in tracking_df.iterrows()
+    }
+
+    selected_delete = st.selectbox(
+
+        "Delete Tracking",
+
+        list(delete_options.keys())
+    )
+
+    if st.button(
+        "🗑 Delete Tracking"
+    ):
+
+        EquipmentTrackingService.delete_tracking(
+
+            delete_options[
+                selected_delete
+            ]
+        )
+
+        st.success(
+            "Tracking deleted"
+        )
+
+        st.rerun()

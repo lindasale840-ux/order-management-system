@@ -154,3 +154,29 @@ class EquipmentTrackingRepository:
             })
 
         st.cache_data.clear()
+
+
+    @staticmethod
+    def delete_tracking(
+        tracking_id
+    ):
+
+        with engine.begin() as conn:
+
+            conn.execute(
+
+                text("""
+
+                DELETE FROM equipment_tracking
+
+                WHERE id=:id
+
+                """),
+
+                {
+
+                    "id": tracking_id
+                }
+            )
+
+        st.cache_data.clear()    
