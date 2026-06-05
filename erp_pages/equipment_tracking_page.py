@@ -294,6 +294,10 @@ def show_equipment_tracking_page():
 
                 return "OVER SLA"
 
+            if row["working_days"] == 2:
+
+                return "WARNING"
+
             return "OK"
 
         if row["service_type"] == "SUBCONTRACT_LAB":
@@ -302,9 +306,11 @@ def show_equipment_tracking_page():
 
                 return "OVER SLA"
 
-            return "OK"
+            if row["working_days"] == 6:
 
-        return ""
+                return "WARNING"
+
+            return "OK"
 
     tracking_df["sla_status"] = (
 
@@ -315,6 +321,74 @@ def show_equipment_tracking_page():
             axis=1
         )
     )
+
+    ok_count = len(
+
+        tracking_df[
+            tracking_df["sla_status"] == "OK"
+        ]
+
+    )
+
+    warning_count = len(
+
+        tracking_df[
+            tracking_df["sla_status"] == "WARNING"
+        ]
+
+    )
+
+    over_sla_count = len(
+
+        tracking_df[
+            tracking_df["sla_status"] == "OVER SLA"
+        ]
+
+    )
+
+    in_progress_count = len(
+
+        tracking_df[
+            tracking_df["sla_status"] == "In Progress"
+        ]
+
+    )
+
+    st.subheader(
+    "SLA Dashboard"
+    )
+
+    col1, col2, col3, col4 = st.columns(4)
+
+    with col1:
+
+        st.metric(
+            "🟢 OK",
+            ok_count
+        )
+
+    with col2:
+
+        st.metric(
+            "🟡 Warning",
+            warning_count
+        )
+
+    with col3:
+
+        st.metric(
+            "🔴 Over SLA",
+            over_sla_count
+        )
+
+    with col4:
+
+        st.metric(
+            "⚪ In Progress",
+            in_progress_count
+        )
+
+    st.divider()
     render_aggrid(
 
         tracking_df,
