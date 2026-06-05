@@ -180,3 +180,23 @@ class EquipmentTrackingRepository:
             )
 
         st.cache_data.clear()    
+
+
+    @staticmethod
+    @st.cache_data(ttl=30)
+    def get_tracking_dashboard():
+
+        query = """
+
+        SELECT *
+
+        FROM equipment_tracking
+
+        ORDER BY id DESC
+
+        """
+
+        return pd.read_sql(
+            query,
+            engine
+        )    

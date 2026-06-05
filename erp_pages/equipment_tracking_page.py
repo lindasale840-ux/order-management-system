@@ -12,6 +12,10 @@ from services.equipment_tracking_service import (
     EquipmentTrackingService
 )
 
+from utils.business_day import (
+    working_days_between
+)
+
 from components.aggrid_table import (
     render_aggrid
 )
@@ -202,6 +206,57 @@ def show_equipment_tracking_page():
         .get_all()
     )
 
+    working_days_list = []
+
+    for _, row in tracking_df.iterrows():
+
+        working_days_list.append(
+
+            working_days_between(
+
+                row["customer_send_date"],
+
+                row["customer_receive_date"]
+
+            )
+
+        )
+
+    tracking_df["working_days"] = working_days_list
+
+    def calculate_sla(row):
+
+        if row["working_days"] is None:
+
+            return "In Progress"
+
+        if row["service_type"] == "LAB":
+
+            if row["working_days"] > 3:
+
+                return "OVER SLA"
+
+            return "OK"
+
+        if row["service_type"] == "SUBCONTRACT_LAB":
+
+            if row["working_days"] > 7:
+
+                return "OVER SLA"
+
+            return "OK"
+
+        return ""
+
+    tracking_df["sla_status"] = (
+
+        tracking_df.apply(
+
+            calculate_sla,
+
+            axis=1
+        )
+    )
     render_aggrid(
 
         tracking_df,
