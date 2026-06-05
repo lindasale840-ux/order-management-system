@@ -79,6 +79,10 @@ from erp_pages.equipment_tracking_page import (
 from services.equipment_tracking_notification_service import (
     EquipmentTrackingNotificationService
 )
+
+from erp_pages.historical_import_page import (
+    show_historical_import_page
+)
 # =========================
 # INIT DATABASE
 # =========================
@@ -234,6 +238,8 @@ if role == "ADMIN":
         "👥 User Management",
 
         "🚨 Error Logs",
+
+        "📥 Historical Import",
 
         "💾 Backup Database"
     ]
@@ -424,6 +430,10 @@ try:
     elif page == "🚨 Error Logs":
 
         show_error_logs_page()
+
+    elif page == "📥 Historical Import":
+
+        show_historical_import_page()    
 
     elif page == "💾 Backup Database":
 
