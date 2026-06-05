@@ -39,38 +39,77 @@ class EquipmentTrackingService:
         note
     ):
 
-        EquipmentTrackingRepository.add_tracking(
+        if EquipmentTrackingRepository.tracking_exists(
+            order_number
+        ):
 
-            order_number,
+            EquipmentTrackingRepository.update_tracking(
 
-            service_type,
+                order_number,
 
-            direct_to_customer,
+                service_type,
 
-            subcontract_name,
+                direct_to_customer,
 
-            customer_send_date,
+                subcontract_name,
 
-            gst_receive_date,
+                customer_send_date,
 
-            gst_send_sub_date,
+                gst_receive_date,
 
-            sub_receive_date,
+                gst_send_sub_date,
 
-            sub_send_date,
+                sub_receive_date,
 
-            gst_receive_back_date,
+                sub_send_date,
 
-            gst_send_customer_date,
+                gst_receive_back_date,
 
-            customer_receive_date,
+                gst_send_customer_date,
 
-            note
-        )
+                customer_receive_date,
+
+                note
+            )
+
+            action = "UPDATE_EQUIPMENT_TRACKING"
+
+        else:
+
+            EquipmentTrackingRepository.add_tracking(
+
+                order_number,
+
+                service_type,
+
+                direct_to_customer,
+
+                subcontract_name,
+
+                customer_send_date,
+
+                gst_receive_date,
+
+                gst_send_sub_date,
+
+                sub_receive_date,
+
+                sub_send_date,
+
+                gst_receive_back_date,
+
+                gst_send_customer_date,
+
+                customer_receive_date,
+
+                note
+            )
+
+            action = "ADD_EQUIPMENT_TRACKING"
 
         LogRepository.add_log(
 
-            "ADD_EQUIPMENT_TRACKING",
+            action,
 
             "",
 
@@ -81,7 +120,6 @@ class EquipmentTrackingService:
             subcontract={subcontract_name}
             """
         )
-
 
     @staticmethod
     def delete_tracking(

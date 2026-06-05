@@ -71,6 +71,31 @@ def show_equipment_tracking_page():
         ].tolist()
     )
 
+    existing_tracking = (
+
+        EquipmentTrackingRepository
+        .get_by_order_number(
+            order_number
+        )
+
+    )
+
+    if not existing_tracking.empty:
+
+        tracking = existing_tracking.iloc[0]
+
+    else:
+
+        tracking = None
+
+    service_default = "LAB"
+
+    if tracking is not None:
+
+        service_default = tracking[
+            "service_type"
+        ]
+
     service_type = st.selectbox(
 
         "Service Type",
@@ -81,7 +106,17 @@ def show_equipment_tracking_page():
 
             "SUBCONTRACT_LAB"
 
-        ]
+        ],
+
+        index=[
+
+            "LAB",
+
+            "SUBCONTRACT_LAB"
+
+        ].index(
+            service_default
+        )
     )
 
     direct_to_customer = st.checkbox(
@@ -107,7 +142,20 @@ def show_equipment_tracking_page():
     if service_type == "SUBCONTRACT_LAB":
 
         subcontract_name = st.text_input(
-            "Subcontract Name"
+
+            "Subcontract Name",
+
+            value=(
+
+                tracking[
+                    "subcontract_name"
+                ]
+
+                if tracking is not None
+
+                else ""
+
+            )
         )
 
         gst_send_sub_date = st.date_input(
@@ -150,9 +198,19 @@ def show_equipment_tracking_page():
 
         gst_send_customer_date = None
 
-    customer_receive_date = st.date_input(
-        "Customer Receive"
+    not_receive_yet = st.checkbox(
+        "Not Receive Yet"
     )
+
+    if not_receive_yet:
+
+        customer_receive_date = None
+
+    else:
+
+        customer_receive_date = st.date_input(
+            "Customer Receive"
+        )
 
     note = st.text_area(
         "Note"

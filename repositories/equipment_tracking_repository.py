@@ -200,3 +200,159 @@ class EquipmentTrackingRepository:
             query,
             engine
         )    
+    
+    @staticmethod
+    def tracking_exists(
+        order_number
+    ):
+
+        query = text("""
+
+        SELECT COUNT(*)
+
+        FROM equipment_tracking
+
+        WHERE order_number=:order_number
+
+        """)
+
+        with engine.begin() as conn:
+
+            return conn.execute(
+
+                query,
+
+                {
+                    "order_number": order_number
+                }
+
+            ).scalar() > 0
+        
+
+    @staticmethod
+    def update_tracking(
+
+        order_number,
+
+        service_type,
+
+        direct_to_customer,
+
+        subcontract_name,
+
+        customer_send_date,
+
+        gst_receive_date,
+
+        gst_send_sub_date,
+
+        sub_receive_date,
+
+        sub_send_date,
+
+        gst_receive_back_date,
+
+        gst_send_customer_date,
+
+        customer_receive_date,
+
+        note
+
+    ):
+
+        with engine.begin() as conn:
+
+            conn.execute(text("""
+
+            UPDATE equipment_tracking
+
+            SET
+
+                service_type=:service_type,
+
+                direct_to_customer=:direct_to_customer,
+
+                subcontract_name=:subcontract_name,
+
+                customer_send_date=:customer_send_date,
+
+                gst_receive_date=:gst_receive_date,
+
+                gst_send_sub_date=:gst_send_sub_date,
+
+                sub_receive_date=:sub_receive_date,
+
+                sub_send_date=:sub_send_date,
+
+                gst_receive_back_date=:gst_receive_back_date,
+
+                gst_send_customer_date=:gst_send_customer_date,
+
+                customer_receive_date=:customer_receive_date,
+
+                note=:note
+
+            WHERE order_number=:order_number
+
+            """),
+
+            {
+
+                "order_number": order_number,
+
+                "service_type": service_type,
+
+                "direct_to_customer": direct_to_customer,
+
+                "subcontract_name": subcontract_name,
+
+                "customer_send_date": customer_send_date,
+
+                "gst_receive_date": gst_receive_date,
+
+                "gst_send_sub_date": gst_send_sub_date,
+
+                "sub_receive_date": sub_receive_date,
+
+                "sub_send_date": sub_send_date,
+
+                "gst_receive_back_date": gst_receive_back_date,
+
+                "gst_send_customer_date": gst_send_customer_date,
+
+                "customer_receive_date": customer_receive_date,
+
+                "note": note
+
+            })
+
+        st.cache_data.clear() 
+
+    @staticmethod
+    def get_by_order_number(
+        order_number
+    ):
+
+        query = """
+
+        SELECT *
+
+        FROM equipment_tracking
+
+        WHERE order_number=:order_number
+
+        LIMIT 1
+
+        """
+
+        return pd.read_sql(
+
+            text(query),
+
+            engine,
+
+            params={
+                "order_number": order_number
+            }
+
+        )       
