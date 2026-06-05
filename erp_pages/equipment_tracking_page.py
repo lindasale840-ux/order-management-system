@@ -395,7 +395,9 @@ def show_equipment_tracking_page():
 
         height=500,
 
-        page_size=10
+        page_size=10,
+
+        color_sla=True
     )
 
     st.divider()
