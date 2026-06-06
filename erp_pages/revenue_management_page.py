@@ -2,6 +2,8 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 
+from datetime import datetime
+
 from services.finance_service import (
 FinanceService
 )
@@ -16,6 +18,14 @@ from repositories.other_revenue_repository import (
 
 from services.other_revenue_service import (
     OtherRevenueService
+)
+
+from repositories.revenue_kpi_repository import (
+    RevenueKPIRepository
+)
+
+from services.revenue_kpi_service import (
+    RevenueKPIService
 )
 
 from components.aggrid_table import (
@@ -421,6 +431,105 @@ def show_revenue_management_page():
 
         f"{total_revenue:,.0f}"
     )
+
+    # =========================
+    # KPI TARGET
+    # =========================
+
+    st.divider()
+
+    st.subheader(
+        "🎯 Revenue KPI"
+    )
+
+    current_year = (
+
+        selected_year
+
+        if selected_year != "ALL"
+
+        else pd.Timestamp.today().year
+
+    )
+
+    kpi_df = (
+
+        RevenueKPIRepository
+        .get_by_year(
+            current_year
+        )
+
+    )
+
+    current_target = 0
+
+    if not kpi_df.empty:
+
+        current_target = (
+
+            kpi_df.iloc[0][
+                "target_amount"
+            ]
+        )
+
+    col1, col2, col3 = st.columns(3)
+
+    with col1:
+
+        kpi_year = st.number_input(
+
+            "KPI Year",
+
+            value=int(current_year),
+
+            step=1
+
+        )
+
+    with col2:
+        kpi_month = st.selectbox(
+
+        "KPI Month",
+
+        list(range(1, 13)),
+
+        index=datetime.now().month - 1
+
+    )         
+
+    with col3:
+
+        kpi_target = st.number_input(
+
+            "Target Revenue",
+
+            value=float(current_target),
+
+            min_value=0.0,
+
+            step=1000000.0
+
+        )
+
+    if st.button(
+        "💾 Save KPI"
+    ):
+
+        RevenueKPIService.save_kpi(
+
+            kpi_year,
+
+            kpi_month,
+
+            kpi_target
+
+        )
+
+        st.success(
+            "KPI Saved"
+        )
+
+        st.rerun()
 
     st.divider()
 

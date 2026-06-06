@@ -2,14 +2,7 @@ from repositories.revenue_kpi_repository import (
     RevenueKPIRepository
 )
 
-RevenueKPIRepository.upsert_kpi(
+df = RevenueKPIRepository.get_all()
 
-    2026,
-    6,
-    150000000
-
-)
-
-print(
-    RevenueKPIRepository.get_all()
-)
+print(df)
+print(df.columns.tolist())

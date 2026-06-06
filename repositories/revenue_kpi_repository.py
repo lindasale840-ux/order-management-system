@@ -12,18 +12,18 @@ class RevenueKPIRepository:
     @st.cache_data(ttl=30)
     def get_all():
 
-        query = """
-
-        SELECT *
-
-        FROM revenue_kpi
-
-        ORDER BY year DESC, month DESC
-
-        """
-
         return pd.read_sql(
-            query,
+
+            """
+
+            SELECT *
+
+            FROM revenue_kpi
+
+            ORDER BY year DESC
+
+            """,
+
             engine
         )
 
@@ -38,67 +38,69 @@ class RevenueKPIRepository:
 
         with engine.begin() as conn:
 
-            conn.execute(text("""
-
-            INSERT INTO revenue_kpi (
-
-                year,
-                month,
-                target_amount
-
-            )
-
-            VALUES (
-
-                :year,
-                :month,
-                :target_amount
-
-            )
-
-            ON CONFLICT(year, month)
-
-            DO UPDATE SET
-
-                target_amount=excluded.target_amount
-
-            """),
-
-            {
-
-                "year": year,
-                "month": month,
-                "target_amount": target_amount
-
-            })
-
-        st.cache_data.clear()
-
-    @staticmethod
-    def delete_kpi(
-
-        kpi_id
-
-    ):
-
-        with engine.begin() as conn:
-
             conn.execute(
 
                 text("""
 
-                DELETE FROM revenue_kpi
+                INSERT INTO revenue_kpi(
 
-                WHERE id=:id
+                    year,
+                    month,
+                    target_amount
+
+                )
+
+                VALUES(
+
+                    :year,
+                    :month,
+                    :target_amount
+
+                )
+
+                ON CONFLICT(year, month)
+
+                DO UPDATE SET
+
+                    target_amount=excluded.target_amount
 
                 """),
 
                 {
 
-                    "id": kpi_id
+                    "year": year,
+                    "month": month,
+                    "target_amount": target_amount
 
                 }
-
             )
 
         st.cache_data.clear()
+
+    @staticmethod
+    def get_by_year(
+
+        year
+
+    ):
+
+        return pd.read_sql(
+
+            text("""
+
+            SELECT *
+
+            FROM revenue_kpi
+
+            WHERE year=:year
+
+            """),
+
+            engine,
+
+            params={
+
+                "year": year
+
+            }
+        )
