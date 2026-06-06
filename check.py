@@ -1,26 +1,15 @@
-from sqlalchemy import text
+from repositories.revenue_kpi_repository import (
+    RevenueKPIRepository
+)
 
-from database.connection import engine
+RevenueKPIRepository.upsert_kpi(
 
-with engine.begin() as conn:
+    2026,
+    6,
+    150000000
 
-    result = conn.execute(text("""
+)
 
-        SELECT name
-
-        FROM sqlite_master
-
-        WHERE type='table'
-
-        AND name='revenue_kpi'
-
-    """))
-
-    row = result.fetchone()
-
-if row:
-
-    print("FOUND")
-else:
-
-    print("NOT FOUND")
+print(
+    RevenueKPIRepository.get_all()
+)
