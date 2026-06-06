@@ -533,6 +533,76 @@ def show_revenue_management_page():
 
     st.divider()
 
+
+    st.subheader(
+        "🎯 KPI Progress"
+    )
+
+    if not kpi_df.empty:
+
+        target_amount = float(
+            kpi_df.iloc[0]["target_amount"]
+        )
+
+        current_revenue = float(
+            total_revenue
+        )
+
+        remaining = max(
+            target_amount - current_revenue,
+            0
+        )
+
+        achievement_percent = 0
+
+        if target_amount > 0:
+
+            achievement_percent = (
+                current_revenue
+                /
+                target_amount
+                *
+                100
+            )
+
+        col1, col2, col3, col4 = st.columns(4)
+
+        with col1:
+
+            st.metric(
+                "Target",
+                f"{target_amount:,.0f}"
+            )
+
+        with col2:
+
+            st.metric(
+                "Current",
+                f"{current_revenue:,.0f}"
+            )
+
+        with col3:
+
+            st.metric(
+                "Remaining",
+                f"{remaining:,.0f}"
+            )
+
+        with col4:
+
+            st.metric(
+                "Achievement %",
+                f"{achievement_percent:.1f}%"
+            )
+
+        st.progress(
+
+            min(
+                achievement_percent,
+                100
+            ) / 100
+        )
+
     # =========================
     # CHART
     # =========================
