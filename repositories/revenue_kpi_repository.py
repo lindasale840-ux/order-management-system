@@ -104,3 +104,38 @@ class RevenueKPIRepository:
 
             }
         )
+    
+    @staticmethod
+    def get_by_year_month(
+
+        year,
+
+        month
+
+    ):
+
+        return pd.read_sql(
+
+            text("""
+
+            SELECT *
+
+            FROM revenue_kpi
+
+            WHERE year=:year
+
+            AND month=:month
+
+            """),
+
+            engine,
+
+            params={
+
+                "year": year,
+
+                "month": month
+
+            }
+
+        )

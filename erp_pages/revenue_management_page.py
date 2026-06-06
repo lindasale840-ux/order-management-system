@@ -454,22 +454,31 @@ def show_revenue_management_page():
 
     kpi_df = (
 
-        RevenueKPIRepository
-        .get_by_year(
-            current_year
-        )
+    RevenueKPIRepository
+    .get_by_year_month(
+
+        current_year,
+
+        selected_month
+
+        if selected_month != "ALL"
+
+        else datetime.now().month
 
     )
 
-    current_target = 0
+)
+
+    current_target = 0.0
 
     if not kpi_df.empty:
 
-        current_target = (
+        current_target = float(
 
             kpi_df.iloc[0][
                 "target_amount"
             ]
+
         )
 
     col1, col2, col3 = st.columns(3)
@@ -511,6 +520,16 @@ def show_revenue_management_page():
 
         )
 
+    save_month = (
+
+        kpi_month
+
+        if selected_month != "ALL"
+
+        else datetime.now().month
+
+    )
+
     if st.button(
         "💾 Save KPI"
     ):
@@ -519,7 +538,7 @@ def show_revenue_management_page():
 
             kpi_year,
 
-            kpi_month,
+            save_month,
 
             kpi_target
 
