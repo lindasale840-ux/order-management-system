@@ -201,6 +201,27 @@ def initialize_database():
         """))
 
         # =========================
+        # REVENUE KPI
+        # =========================
+        conn.execute(text("""
+
+        CREATE TABLE IF NOT EXISTS revenue_kpi (
+
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+            year INTEGER NOT NULL,
+
+            month INTEGER NOT NULL,
+
+            target_amount REAL NOT NULL,
+
+            UNIQUE(year, month)
+
+        )
+
+        """))
+
+        # =========================
         # ERROR LOGS
         # =========================
 

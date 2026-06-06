@@ -1,19 +1,26 @@
-import sqlite3
+from sqlalchemy import text
 
-conn = sqlite3.connect("database/app.db")
+from database.connection import engine
 
-cursor = conn.cursor()
+with engine.begin() as conn:
 
-cursor.execute("""
+    result = conn.execute(text("""
 
-SELECT *
+        SELECT name
 
-FROM equipment_tracking
+        FROM sqlite_master
 
-""")
+        WHERE type='table'
 
-for row in cursor.fetchall():
+        AND name='revenue_kpi'
 
-    print(row)
+    """))
 
-conn.close()
+    row = result.fetchone()
+
+if row:
+
+    print("FOUND")
+else:
+
+    print("NOT FOUND")
