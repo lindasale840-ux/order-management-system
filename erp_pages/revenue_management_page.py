@@ -622,6 +622,46 @@ def show_revenue_management_page():
             ) / 100
         )
 
+        pie_df = pd.DataFrame({
+
+            "Category": [
+
+                "Achieved",
+
+                "Remaining"
+
+            ],
+
+            "Amount": [
+
+                current_revenue,
+
+                remaining
+
+            ]
+
+        })
+
+        pie_fig = px.pie(
+
+            pie_df,
+
+            names="Category",
+
+            values="Amount",
+
+            title="KPI Achievement"
+
+        )
+
+        st.plotly_chart(
+
+            pie_fig,
+
+            width="stretch"
+
+        )
+
     # =========================
     # CHART
     # =========================
