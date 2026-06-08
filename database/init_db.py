@@ -62,6 +62,47 @@ def initialize_database():
 
             pass
 
+        try:
+
+            conn.execute(text("""
+
+            ALTER TABLE orders
+            ADD COLUMN is_deleted INTEGER DEFAULT 0
+
+            """))
+
+        except Exception:
+
+            pass
+
+
+        try:
+
+            conn.execute(text("""
+
+            ALTER TABLE orders
+            ADD COLUMN deleted_at TEXT
+
+            """))
+
+        except Exception:
+
+            pass
+
+
+        try:
+
+            conn.execute(text("""
+
+            ALTER TABLE orders
+            ADD COLUMN deleted_by TEXT
+
+            """))
+
+        except Exception:
+
+            pass
+
         # =========================
         # PAYMENTS
         # =========================

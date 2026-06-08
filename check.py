@@ -1,8 +1,16 @@
-from repositories.revenue_kpi_repository import (
-    RevenueKPIRepository
+import pandas as pd
+from database.connection import engine
+
+df = pd.read_sql(
+
+    """
+
+    PRAGMA table_info(orders)
+
+    """,
+
+    engine
+
 )
 
-df = RevenueKPIRepository.get_all()
-
-print(df)
-print(df.columns.tolist())
+print(df[["name"]])
