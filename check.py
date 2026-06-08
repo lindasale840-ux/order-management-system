@@ -5,7 +5,15 @@ df = pd.read_sql(
 
     """
 
-    PRAGMA table_info(orders)
+    SELECT
+
+        order_number,
+
+        is_deleted,
+
+        deleted_by
+
+    FROM orders
 
     """,
 
@@ -13,4 +21,4 @@ df = pd.read_sql(
 
 )
 
-print(df[["name"]])
+print(df)

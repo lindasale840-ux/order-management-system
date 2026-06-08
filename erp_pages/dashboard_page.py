@@ -264,19 +264,43 @@ def show_dashboard_page():
             key="delete_order_select"
         )
 
+        confirm_delete = st.checkbox(
+
+            "I confirm move this order to trash"
+
+        )
+
         if st.button(
-            "🗑 Delete Order"
+
+            "🗑 Move To Trash"
+
         ):
 
-            DashboardService.delete_order(
-                selected_delete_order
-            )
+            if not confirm_delete:
 
-            st.success(
-                f"Deleted {selected_delete_order}"
-            )
+                st.error(
 
-            st.rerun()
+                    "Please confirm first"
+
+                )
+
+            else:
+
+                DashboardService.move_to_trash(
+
+                    selected_delete_order,
+
+                    st.session_state["username"]
+
+                )
+
+                st.success(
+
+                    f"Moved {selected_delete_order} to trash"
+
+                )
+
+                st.rerun()
 
     else:
 

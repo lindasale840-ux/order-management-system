@@ -43,21 +43,30 @@ class DashboardService:
         )
 
     @staticmethod
-    def delete_order(
-        order_number
+    def move_to_trash(
+
+        order_number,
+
+        deleted_by
+
     ):
 
-        OrderRepository.delete_order_cascade(
-            order_number
+        OrderRepository.soft_delete_order(
+
+            order_number,
+
+            deleted_by
+
         )
 
         LogRepository.add_log(
 
-            "DELETE_ORDER",
+            "MOVE_TO_TRASH",
 
             "",
 
             order_number,
 
-            f"Cascade delete order {order_number}"
+            f"Move order {order_number} to trash"
+
         )

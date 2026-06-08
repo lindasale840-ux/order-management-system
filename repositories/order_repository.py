@@ -23,6 +23,8 @@ class OrderRepository:
 
         FROM orders
 
+        WHERE is_deleted = 0
+
         ORDER BY id DESC
 
         """
@@ -244,5 +246,46 @@ class OrderRepository:
             )
 
         st.cache_data.clear()
+
+    @staticmethod
+    def soft_delete_order(
+
+        order_number,
+
+        deleted_by
+
+    ):
+
+        with engine.begin() as conn:
+
+            conn.execute(
+
+                text("""
+
+                UPDATE orders
+
+                SET
+
+                    is_deleted = 1,
+
+                    deleted_at = CURRENT_TIMESTAMP,
+
+                    deleted_by = :deleted_by
+
+                WHERE order_number = :order_number
+
+                """),
+
+                {
+
+                    "order_number": order_number,
+
+                    "deleted_by": deleted_by
+
+                }
+
+            )
+
+        st.cache_data.clear()    
 
 
