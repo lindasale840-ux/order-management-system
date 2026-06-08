@@ -286,6 +286,31 @@ class OrderRepository:
 
             )
 
-        st.cache_data.clear()    
+        st.cache_data.clear()   
+
+
+    @staticmethod
+    @st.cache_data(ttl=30)
+    def get_deleted_orders():
+
+        query = """
+
+        SELECT *
+
+        FROM orders
+
+        WHERE is_deleted = 1
+
+        ORDER BY deleted_at DESC
+
+        """
+
+        return pd.read_sql(
+
+            query,
+
+            engine
+
+        )     
 
 

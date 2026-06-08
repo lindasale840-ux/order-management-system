@@ -83,6 +83,12 @@ from services.equipment_tracking_notification_service import (
 from erp_pages.historical_import_page import (
     show_historical_import_page
 )
+
+from erp_pages.trash_bin_page import (
+    show_trash_bin_page
+)
+
+
 # =========================
 # INIT DATABASE
 # =========================
@@ -236,6 +242,8 @@ if role == "ADMIN":
         "📝 Logs",
 
         "👥 User Management",
+
+        "🗑 Trash Bin",
 
         "🚨 Error Logs",
 
@@ -427,6 +435,10 @@ try:
 
         show_user_management_page()
 
+    elif page == "🗑 Trash Bin":
+
+        show_trash_bin_page()
+        
     elif page == "🚨 Error Logs":
 
         show_error_logs_page()
