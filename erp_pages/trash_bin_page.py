@@ -83,19 +83,19 @@ def show_trash_bin_page():
     "♻ Restore Order"
     )
 
-    selected_restore_order = st.selectbox(
+    selected_restore_orders = st.multiselect(
 
-        "Select Order To Restore",
+        "Select Orders To Restore",
 
-        order_options,
+        options=order_options,
 
-        key="restore_order"
+        key="restore_orders"
 
     )
 
     confirm_restore = st.checkbox(
 
-        "I confirm restore this order",
+        "I confirm restore selected orders",
 
         key="confirm_restore"
 
@@ -103,27 +103,37 @@ def show_trash_bin_page():
 
     if st.button(
 
-        "♻ Restore Order"
+        "♻ Restore Selected"
 
     ):
 
-        if not confirm_restore:
+        if not selected_restore_orders:
 
             st.error(
+
+                "Please select at least one order"
+
+            )
+
+        elif not confirm_restore:
+
+            st.error(
+
                 "Please confirm first"
+
             )
 
         else:
 
-            DashboardService.restore_order(
+            DashboardService.bulk_restore_orders(
 
-                selected_restore_order
+                selected_restore_orders
 
             )
 
             st.success(
 
-                f"Restored {selected_restore_order}"
+                f"Restored {len(selected_restore_orders)} orders"
 
             )
 
@@ -135,15 +145,16 @@ def show_trash_bin_page():
     "☠ Permanent Delete"
     )
 
-    selected_permanent_order = st.selectbox(
+    selected_permanent_orders = st.multiselect(
 
-        "Select Order To Permanently Delete",
+        "Select Orders To Permanently Delete",
 
-        order_options,
+        options=order_options,
 
-        key="permanent_delete_order"
+        key="permanent_delete_orders"
 
     )
+
     confirm_permanent_delete = st.checkbox(
 
         "I understand this action cannot be undone",
@@ -154,11 +165,19 @@ def show_trash_bin_page():
 
     if st.button(
 
-        "☠ Permanent Delete"
+        "☠ Permanent Delete Selected"
 
     ):
 
-        if not confirm_permanent_delete:
+        if not selected_permanent_orders:
+
+            st.error(
+
+                "Please select at least one order"
+
+            )
+
+        elif not confirm_permanent_delete:
 
             st.error(
 
@@ -168,18 +187,16 @@ def show_trash_bin_page():
 
         else:
 
-            DashboardService.permanent_delete_order(
+            DashboardService.bulk_permanent_delete_orders(
 
-                selected_permanent_order
+                selected_permanent_orders
 
             )
 
             st.success(
 
-                f"Permanently deleted {selected_permanent_order}"
+                f"Permanently deleted {len(selected_permanent_orders)} orders"
 
             )
 
             st.rerun()
-
-   

@@ -91,6 +91,7 @@ def show_dashboard_page():
             )
 
             st.success("Order synced")
+            st.rerun()
 
     with tab2:
 
@@ -135,6 +136,7 @@ def show_dashboard_page():
                 st.success(
                     "Excel synced"
                 )
+                st.rerun()
 
     st.divider()
 

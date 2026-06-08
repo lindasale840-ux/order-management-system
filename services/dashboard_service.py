@@ -6,6 +6,8 @@ from repositories.log_repository import (
     LogRepository
 )
 
+import streamlit as st
+
 
 class DashboardService:
 
@@ -30,6 +32,8 @@ class DashboardService:
 
             sale_owner
         )
+
+        st.cache_data.clear()
 
         LogRepository.add_log(
 
@@ -96,6 +100,34 @@ class DashboardService:
 
         ) 
 
+
+    @staticmethod
+    def bulk_restore_orders(
+
+        order_numbers
+
+    ):
+
+        for order_number in order_numbers:
+
+            OrderRepository.restore_order(
+
+                order_number
+
+            )
+
+            LogRepository.add_log(
+
+                "RESTORE_ORDER",
+
+                "",
+
+                order_number,
+
+                f"Restore order {order_number}"
+
+            )    
+
     @staticmethod
     def permanent_delete_order(
 
@@ -121,6 +153,32 @@ class DashboardService:
 
         )  
 
+    @staticmethod
+    def bulk_permanent_delete_orders(
+
+        order_numbers
+
+    ):
+
+        for order_number in order_numbers:
+
+            OrderRepository.delete_order_cascade(
+
+                order_number
+
+            )
+
+            LogRepository.add_log(
+
+                "PERMANENT_DELETE",
+
+                "",
+
+                order_number,
+
+                f"Permanent delete order {order_number}"
+
+            )
 
     @staticmethod
     def bulk_move_to_trash(
