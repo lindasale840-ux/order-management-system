@@ -12,6 +12,9 @@ from utils.auth_guard import (
     require_editor
 )
 
+from services.dashboard_service import (
+    DashboardService
+)
 
 def show_trash_bin_page():
 
@@ -65,3 +68,57 @@ def show_trash_bin_page():
         f"Deleted Orders: {len(display_df)}"
 
     )
+
+    st.divider()
+
+    order_options = (
+
+        deleted_df["order_number"]
+
+        .tolist()
+
+    )
+
+    selected_restore_order = st.selectbox(
+
+        "Select Order To Restore",
+
+        order_options
+
+    )
+
+    confirm_restore = st.checkbox(
+
+        "I confirm restore this order"
+
+    )
+
+    if st.button(
+
+        "♻ Restore Order"
+
+    ):
+
+        if not confirm_restore:
+
+            st.error(
+
+                "Please confirm first"
+
+            )
+
+        else:
+
+            DashboardService.restore_order(
+
+                selected_restore_order
+
+            )
+
+            st.success(
+
+                f"Restored {selected_restore_order}"
+
+            )
+
+            st.rerun()

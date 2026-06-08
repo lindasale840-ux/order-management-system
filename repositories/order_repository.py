@@ -311,6 +311,44 @@ class OrderRepository:
 
             engine
 
-        )     
+        )  
+
+
+    @staticmethod
+    def restore_order(
+
+        order_number
+
+    ):
+
+        with engine.begin() as conn:
+
+            conn.execute(
+
+                text("""
+
+                UPDATE orders
+
+                SET
+
+                    is_deleted = 0,
+
+                    deleted_at = NULL,
+
+                    deleted_by = NULL
+
+                WHERE order_number = :order_number
+
+                """),
+
+                {
+
+                    "order_number": order_number
+
+                }
+
+            )
+
+        st.cache_data.clear()   
 
 

@@ -70,3 +70,28 @@ class DashboardService:
             f"Move order {order_number} to trash"
 
         )
+
+    @staticmethod
+    def restore_order(
+
+        order_number
+
+    ):
+
+        OrderRepository.restore_order(
+
+            order_number
+
+        )
+
+        LogRepository.add_log(
+
+            "RESTORE_ORDER",
+
+            "",
+
+            order_number,
+
+            f"Restore order {order_number}"
+
+        )    
