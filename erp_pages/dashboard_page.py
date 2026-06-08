@@ -245,6 +245,67 @@ def show_dashboard_page():
     st.divider()
 
     st.subheader(
+        "🗑 Bulk Move To Trash"
+    )
+
+    selected_orders = st.multiselect(
+
+    "Select Orders",
+
+    options=df["order_number"].tolist()
+
+    )
+
+    confirm_bulk_delete = st.checkbox(
+
+    "I confirm moving selected orders to trash"
+
+    )
+
+    if st.button(
+
+    "🗑 Move Selected To Trash"
+
+    ):
+
+        if not selected_orders:
+
+            st.error(
+
+                "Please select at least one order"
+
+            )
+
+        elif not confirm_bulk_delete:
+
+            st.error(
+
+                "Please confirm first"
+
+            )
+
+        else:
+
+            st.write(selected_orders)
+
+            DashboardService.bulk_move_to_trash(
+
+                selected_orders,
+
+                st.session_state["username"]
+
+            )
+
+            st.success(
+
+                f"Moved {len(selected_orders)} orders to trash"
+
+            )
+
+            st.rerun()
+    st.divider()
+
+    st.subheader(
         "🗑 Delete Order"
     )
 

@@ -79,18 +79,60 @@ def show_trash_bin_page():
 
     )
 
+    st.subheader(
+    "♻ Restore Order"
+    )
+
     selected_restore_order = st.selectbox(
 
         "Select Order To Restore",
 
-        order_options
+        order_options,
+
+        key="restore_order"
 
     )
+
+    confirm_restore = st.checkbox(
+
+        "I confirm restore this order",
+
+        key="confirm_restore"
+
+    )
+
+    if st.button(
+
+        "♻ Restore Order"
+
+    ):
+
+        if not confirm_restore:
+
+            st.error(
+                "Please confirm first"
+            )
+
+        else:
+
+            DashboardService.restore_order(
+
+                selected_restore_order
+
+            )
+
+            st.success(
+
+                f"Restored {selected_restore_order}"
+
+            )
+
+            st.rerun()
 
     st.divider()
 
     st.subheader(
-        "☠ Permanent Delete"
+    "☠ Permanent Delete"
     )
 
     selected_permanent_order = st.selectbox(
@@ -102,7 +144,6 @@ def show_trash_bin_page():
         key="permanent_delete_order"
 
     )
-
     confirm_permanent_delete = st.checkbox(
 
         "I understand this action cannot be undone",
@@ -141,38 +182,4 @@ def show_trash_bin_page():
 
             st.rerun()
 
-    confirm_restore = st.checkbox(
-
-        "I confirm restore this order"
-
-    )
-
-    if st.button(
-
-        "♻ Restore Order"
-
-    ):
-
-        if not confirm_restore:
-
-            st.error(
-
-                "Please confirm first"
-
-            )
-
-        else:
-
-            DashboardService.restore_order(
-
-                selected_restore_order
-
-            )
-
-            st.success(
-
-                f"Restored {selected_restore_order}"
-
-            )
-
-            st.rerun()
+   

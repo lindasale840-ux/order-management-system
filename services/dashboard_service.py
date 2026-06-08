@@ -119,4 +119,36 @@ class DashboardService:
 
             f"Permanent delete order {order_number}"
 
-        )       
+        )  
+
+
+    @staticmethod
+    def bulk_move_to_trash(
+
+        order_numbers,
+
+        deleted_by
+
+    ):
+
+        for order_number in order_numbers:
+
+            OrderRepository.soft_delete_order(
+
+                order_number,
+
+                deleted_by
+
+            )
+
+            LogRepository.add_log(
+
+                "MOVE_TO_TRASH",
+
+                "",
+
+                order_number,
+
+                f"Move order {order_number} to trash"
+
+            )         
