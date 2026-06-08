@@ -94,4 +94,29 @@ class DashboardService:
 
             f"Restore order {order_number}"
 
-        )    
+        ) 
+
+    @staticmethod
+    def permanent_delete_order(
+
+        order_number
+
+    ):
+
+        OrderRepository.delete_order_cascade(
+
+            order_number
+
+        )
+
+        LogRepository.add_log(
+
+            "PERMANENT_DELETE",
+
+            "",
+
+            order_number,
+
+            f"Permanent delete order {order_number}"
+
+        )       

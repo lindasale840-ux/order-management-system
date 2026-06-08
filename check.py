@@ -1,25 +1,15 @@
 import pandas as pd
 from database.connection import engine
 
-order_no = "test1"
-
 df = pd.read_sql(
 
-    f"""
+    """
 
-    SELECT
+    SELECT *
 
-        order_number,
+    FROM document_tracking
 
-        is_deleted,
-
-        deleted_at,
-
-        deleted_by
-
-    FROM orders
-
-    WHERE order_number = '{order_no}'
+    WHERE order_number='check.py'
 
     """,
 

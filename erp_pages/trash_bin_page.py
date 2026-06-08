@@ -87,6 +87,60 @@ def show_trash_bin_page():
 
     )
 
+    st.divider()
+
+    st.subheader(
+        "☠ Permanent Delete"
+    )
+
+    selected_permanent_order = st.selectbox(
+
+        "Select Order To Permanently Delete",
+
+        order_options,
+
+        key="permanent_delete_order"
+
+    )
+
+    confirm_permanent_delete = st.checkbox(
+
+        "I understand this action cannot be undone",
+
+        key="confirm_permanent_delete"
+
+    )
+
+    if st.button(
+
+        "☠ Permanent Delete"
+
+    ):
+
+        if not confirm_permanent_delete:
+
+            st.error(
+
+                "Please confirm first"
+
+            )
+
+        else:
+
+            DashboardService.permanent_delete_order(
+
+                selected_permanent_order
+
+            )
+
+            st.success(
+
+                f"Permanently deleted {selected_permanent_order}"
+
+            )
+
+            st.rerun()
+
     confirm_restore = st.checkbox(
 
         "I confirm restore this order"
