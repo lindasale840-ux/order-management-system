@@ -71,24 +71,59 @@ def show_document_tracking_page():
         )
     )
 
-    order_map = {
+    
+
+    # =========================
+    # SEARCH ORDER
+    # =========================
+
+    search_text = st.text_input(
+        "🔍 Search Order / Customer"
+    )
+
+    filtered_df = orders_df.copy()
+
+    if search_text:
+
+        filtered_df = filtered_df[
+
+            filtered_df["display"]
+
+            .str.contains(
+                search_text,
+                case=False,
+                na=False
+            )
+        ]
+
+    filtered_order_map = {
 
         row["display"]:
         row["order_number"]
 
-        for _, row in orders_df.iterrows()
+        for _, row in filtered_df.iterrows()
     }
 
     col1, col2 = st.columns(2)
 
     with col1:
 
-        selected_display = st.selectbox(
+        if filtered_order_map:
 
-            "Order",
+            selected_display = st.selectbox(
 
-            list(order_map.keys())
-        )
+                "Order",
+
+                list(filtered_order_map.keys())
+            )
+
+        else:
+
+            st.warning(
+                "No matching order found"
+            )
+
+            st.stop()
 
         sent_date = st.date_input(
             "Sent Date"
@@ -124,7 +159,7 @@ def show_document_tracking_page():
 
         DocumentTrackingService.add_tracking(
 
-            order_map[
+            filtered_order_map[
                 selected_display
             ],
 
