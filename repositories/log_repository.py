@@ -6,6 +6,8 @@ from sqlalchemy import text
 
 from database.connection import engine
 
+from utils.datetime_utils import convert_utc_columns
+
 
 class LogRepository:
 
@@ -82,10 +84,12 @@ class LogRepository:
         ORDER BY id DESC
         """
 
-        return pd.read_sql(
+        df = pd.read_sql(
             query,
             engine
         )
+        
+        return convert_utc_columns(df)
 
     @staticmethod
     def delete_all_logs():

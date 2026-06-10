@@ -5,6 +5,7 @@ from sqlalchemy import text
 
 from database.connection import engine
 
+from utils.datetime_utils import convert_utc_columns
 
 class EquipmentTrackingRepository:
 
@@ -22,10 +23,12 @@ class EquipmentTrackingRepository:
 
         """
 
-        return pd.read_sql(
+        df = pd.read_sql(
             query,
             engine
         )
+        
+        return convert_utc_columns(df)
 
     @staticmethod
     def add_tracking(
@@ -196,10 +199,12 @@ class EquipmentTrackingRepository:
 
         """
 
-        return pd.read_sql(
+        df = pd.read_sql(
             query,
             engine
-        )    
+        )  
+        
+        return convert_utc_columns(df)  
     
     @staticmethod
     def tracking_exists(
@@ -345,7 +350,7 @@ class EquipmentTrackingRepository:
 
         """
 
-        return pd.read_sql(
+        df = pd.read_sql(
 
             text(query),
 
@@ -355,4 +360,6 @@ class EquipmentTrackingRepository:
                 "order_number": order_number
             }
 
-        )       
+        )  
+        
+        return convert_utc_columns(df)     

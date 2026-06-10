@@ -29,9 +29,9 @@ def initialize_database():
 
             cert_status DATE,
 
-            created_at TEXT DEFAULT (datetime('now','+7 hours')),
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
-            updated_at TEXT DEFAULT (datetime('now','+7 hours'))
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
 
         """))
@@ -129,9 +129,9 @@ def initialize_database():
 
             note TEXT,
 
-            created_at TEXT DEFAULT (datetime('now','+7 hours')),
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
-            updated_at TEXT DEFAULT (datetime('now','+7 hours'))
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
 
         """))
@@ -167,7 +167,7 @@ def initialize_database():
 
             description TEXT,
 
-            created_at TEXT DEFAULT (datetime('now','+7 hours'))
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
 
         """))
@@ -201,7 +201,7 @@ def initialize_database():
 
             role TEXT,
 
-            created_at TEXT DEFAULT (datetime('now','+7 hours'))
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
 
         """))
@@ -235,7 +235,7 @@ def initialize_database():
 
             note TEXT,
 
-            created_at TEXT DEFAULT (datetime('now','+7 hours'))
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 
         )
 
@@ -276,7 +276,7 @@ def initialize_database():
 
             error_message TEXT,
 
-            created_at TEXT DEFAULT (datetime('now','+7 hours'))
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 
         )
 
@@ -300,9 +300,9 @@ def initialize_database():
 
             note TEXT,
 
-            created_at TEXT DEFAULT (datetime('now','+7 hours')),
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
-            updated_at TEXT DEFAULT (datetime('now','+7 hours'))
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 
         )
 
@@ -344,7 +344,7 @@ def initialize_database():
 
             note TEXT,
 
-            created_at TEXT DEFAULT (datetime('now','+7 hours'))
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 
         )
 

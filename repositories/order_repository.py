@@ -5,6 +5,7 @@ from sqlalchemy import text
 
 from database.connection import engine
 
+from utils.datetime_utils import convert_utc_columns
 
 class OrderRepository:
 
@@ -29,10 +30,12 @@ class OrderRepository:
 
         """
 
-        return pd.read_sql(
+        df =  pd.read_sql(
             query,
             engine
         )
+        
+        return convert_utc_columns(df)
 
     # =========================
     # GET CUSTOMERS
@@ -81,7 +84,7 @@ class OrderRepository:
 
         """
 
-        return pd.read_sql(
+        df =  pd.read_sql(
 
             text(query),
 
@@ -91,6 +94,8 @@ class OrderRepository:
                 "customer_name": customer_name
             }
         )
+        
+        return convert_utc_columns(df)
 
     # =========================
     # UPSERT ORDER
@@ -305,13 +310,15 @@ class OrderRepository:
 
         """
 
-        return pd.read_sql(
+        df =  pd.read_sql(
 
             query,
 
             engine
 
-        )  
+        )
+        
+        return convert_utc_columns(df)  
 
 
     @staticmethod

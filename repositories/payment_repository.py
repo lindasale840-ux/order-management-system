@@ -5,6 +5,8 @@ from sqlalchemy import text
 
 from database.connection import engine
 
+from utils.datetime_utils import convert_utc_columns
+
 
 class PaymentRepository:
 
@@ -23,10 +25,12 @@ class PaymentRepository:
 
         """
 
-        return pd.read_sql(
+        df =  pd.read_sql(
             query,
             engine
         )
+        
+        return convert_utc_columns(df)
 
     @staticmethod
     def upsert_payment(

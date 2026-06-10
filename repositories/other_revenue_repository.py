@@ -4,6 +4,8 @@ from sqlalchemy import text
 
 from database.connection import engine
 
+from utils.datetime_utils import convert_utc_columns
+
 
 class OtherRevenueRepository:
 
@@ -20,12 +22,14 @@ class OtherRevenueRepository:
 
         """
 
-        return pd.read_sql(
+        df = pd.read_sql(
 
             query,
 
             engine
         )
+        
+        return convert_utc_columns(df)
 
     @staticmethod
     def add_revenue(

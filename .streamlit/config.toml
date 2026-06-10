@@ -2,4 +2,4 @@
 
 runOnSave = true
 
-fileWatcherType = "auto"
+fileWatcherType = "None"
