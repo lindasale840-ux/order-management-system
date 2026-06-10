@@ -8,6 +8,8 @@ from repositories.document_tracking_repository import (
 
 import pandas as pd
 
+from config.app_config import DOCUMENT_WARNING_DAYS
+
 
 class SidebarNotificationService:
 
@@ -99,7 +101,7 @@ class SidebarNotificationService:
                 cert_orders_df[
                     "cert_status"
                 ]
-            ).dt.days.gt(7)
+            ).dt.days.gt(DOCUMENT_WARNING_DAYS)
 
             &
 
@@ -144,7 +146,7 @@ class SidebarNotificationService:
                     tracking_df[
                         "sent_date"
                     ]
-                ).dt.days.gt(7)
+                ).dt.days.gt(DOCUMENT_WARNING_DAYS)
             ]
 
             pending_return = len(

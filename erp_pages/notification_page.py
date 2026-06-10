@@ -22,6 +22,8 @@ from utils.excel_export import (
     dataframe_to_excel
 )
 
+from config.app_config import DOCUMENT_WARNING_DAYS
+
 
 def export_button(
     df,
@@ -167,7 +169,7 @@ def show_notification_page():
             today
             -
             missing_document_df["cert_status"]
-        ).dt.days.gt(7)
+        ).dt.days.gt(DOCUMENT_WARNING_DAYS)
 
         &
 
@@ -208,7 +210,7 @@ def show_notification_page():
                 pending_return_df[
                     "sent_date"
                 ]
-            ).dt.days.gt(7)
+            ).dt.days.gt(DOCUMENT_WARNING_DAYS)
         ]
 
         if not pending_return_df.empty:
@@ -224,7 +226,7 @@ def show_notification_page():
                     today
                     -
                     pending_return_df["sent_date"]
-                ).dt.days.gt(7)
+                ).dt.days.gt(DOCUMENT_WARNING_DAYS)
             ]
 
     # =========================
