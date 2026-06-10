@@ -1,15 +1,31 @@
-import pandas as pd
+from sqlalchemy import text
 from database.connection import engine
 
-df = pd.read_sql("""
+with engine.begin() as conn:
 
-SELECT
-    order_number,
-    is_deleted,
-    deleted_at
-FROM orders
-WHERE order_number IN ('test','test1','test2')
+    conn.execute(text("""
+    UPDATE orders
+    SET created_at = datetime(created_at,'+7 hours')
+    """))
 
-""", engine)
+    conn.execute(text("""
+    UPDATE payments
+    SET created_at = datetime(created_at,'+7 hours')
+    """))
 
-print(df)
+    conn.execute(text("""
+    UPDATE logs
+    SET created_at = datetime(created_at,'+7 hours')
+    """))
+
+    conn.execute(text("""
+    UPDATE document_tracking
+    SET created_at = datetime(created_at,'+7 hours')
+    """))
+
+    conn.execute(text("""
+    UPDATE equipment_tracking
+    SET created_at = datetime(created_at,'+7 hours')
+    """))
+
+print("DONE")
