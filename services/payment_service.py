@@ -1,3 +1,5 @@
+import streamlit as st
+
 from repositories.payment_repository import (
     PaymentRepository
 )
@@ -47,7 +49,9 @@ class PaymentService:
 
             commission_actual,
 
-            note
+            note,
+            
+            st.session_state["username"]
         )
 
         OrderRepository.update_invoice_group(

@@ -148,6 +148,19 @@ def initialize_database():
         except Exception:
 
             pass
+        
+        try:
+
+            conn.execute(text("""
+
+            ALTER TABLE payments
+            ADD COLUMN invoice_created_by TEXT
+
+            """))
+
+        except Exception:
+
+            pass
 
         # =========================
         # LOGS

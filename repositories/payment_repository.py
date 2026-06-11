@@ -51,7 +51,9 @@ class PaymentRepository:
 
         commission_actual,
 
-        note
+        note,
+        
+        invoice_created_by
     ):
 
         with engine.begin() as conn:
@@ -76,7 +78,9 @@ class PaymentRepository:
 
                 commission_actual,
 
-                note
+                note,
+                
+                invoice_created_by
 
             )
 
@@ -98,7 +102,9 @@ class PaymentRepository:
 
                 :commission_actual,
 
-                :note
+                :note,
+                
+                :invoice_created_by
             )
 
             ON CONFLICT(order_number)
@@ -120,6 +126,8 @@ class PaymentRepository:
                 commission_actual=excluded.commission_actual,
 
                 note=excluded.note,
+                
+                invoice_created_by=excluded.invoice_created_by,
 
                 updated_at=CURRENT_TIMESTAMP
 
@@ -143,7 +151,9 @@ class PaymentRepository:
 
                 "commission_actual": commission_actual,
 
-                "note": note
+                "note": note,
+                
+                "invoice_created_by": invoice_created_by
             })
 
         st.cache_data.clear()

@@ -90,6 +90,43 @@ def show_revenue_management_page():
             df["customer_name"]
             == selected_customer
         ]
+        
+    
+    # =========================
+    # ASSISTANT FILTER
+    # =========================
+
+    assistant_list = sorted(
+
+        df["invoice_created_by"]
+        .dropna()
+        .unique()
+        .tolist()
+
+    )
+
+    assistant_options = ["ALL"] + assistant_list
+
+    selected_assistant = st.selectbox(
+
+        "Assistant",
+
+        assistant_options
+
+    )
+
+    if selected_assistant != "ALL":
+
+        df = df[
+
+            df["invoice_created_by"]
+
+            ==
+
+            selected_assistant
+
+        ]    
+        
 
     # =========================
     # YEAR / MONTH FILTER
@@ -700,6 +737,47 @@ def show_revenue_management_page():
     st.divider()
 
     # =========================
+    # REVENUE BY ASSISTANT
+    # =========================
+
+    if "invoice_created_by" in df.columns:
+
+        assistant_chart = (
+
+            df.groupby(
+                "invoice_created_by"
+            )["total"]
+
+            .sum()
+
+            .reset_index()
+
+        )
+
+        if not assistant_chart.empty:
+
+            fig2 = px.bar(
+
+                assistant_chart,
+
+                x="invoice_created_by",
+
+                y="total",
+
+                title="Revenue By Assistant"
+
+            )
+
+            st.plotly_chart(
+
+                fig2,
+
+                width="stretch"
+
+            )
+            
+    st.divider()        
+    # =========================
     # TABLE
     # =========================
     # =========================
@@ -795,6 +873,8 @@ def show_revenue_management_page():
             "order_number",
 
             "invoice_date",
+            
+            "invoice_created_by",
 
             "payment_status",
 
