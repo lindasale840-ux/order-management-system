@@ -1,16 +1,16 @@
-from sqlalchemy import text
 from database.connection import engine
+import pandas as pd
 
-with engine.begin() as conn:
-
-    result = conn.execute(text("""
+df = pd.read_sql(
+    """
     SELECT
-        id,
         order_number,
-        created_at,
-        updated_at
+        customer_name,
+        sale_owner
     FROM orders
-    WHERE order_number='test71'
-    """))
+    LIMIT 30
+    """,
+    engine
+)
 
-    print(result.fetchone())
+print(df)
