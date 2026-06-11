@@ -87,7 +87,9 @@ def show_dashboard_page():
 
                 cert_status,
 
-                st.session_state["sale_owner"]
+                st.session_state["sale_owner"],
+                
+                st.session_state["username"]
             )
 
             st.success("Order synced")
@@ -130,7 +132,9 @@ def show_dashboard_page():
                             None
                         ),
 
-                        st.session_state["sale_owner"]
+                        st.session_state["sale_owner"],
+                        
+                        st.session_state["username"]
                     )
 
                 st.success(

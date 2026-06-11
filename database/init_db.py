@@ -48,6 +48,19 @@ def initialize_database():
         except Exception:
 
             pass
+        
+        try:
+
+            conn.execute(text("""
+
+            ALTER TABLE orders
+            ADD COLUMN created_by TEXT
+
+            """))
+
+        except Exception:
+
+            pass
 
         try:
 

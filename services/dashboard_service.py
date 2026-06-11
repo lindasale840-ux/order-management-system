@@ -17,7 +17,8 @@ class DashboardService:
         order_number,
         measurement_date,
         cert_status,
-        sale_owner
+        sale_owner,
+        created_by
     ):
 
         OrderRepository.upsert_order(
@@ -30,7 +31,9 @@ class DashboardService:
 
             cert_status,
 
-            sale_owner
+            sale_owner,
+            
+            created_by
         )
 
         st.cache_data.clear()

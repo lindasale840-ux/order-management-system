@@ -1,12 +1,17 @@
-from repositories.payment_repository import PaymentRepository
+import pandas as pd
+from database.connection import engine
 
-df = PaymentRepository.get_all_payments()
+df = pd.read_sql("""
 
-print(
-    df[
-        [
-            "order_number",
-            "invoice_created_by"
-        ]
-    ].head(20)
-)
+SELECT
+order_number,
+sale_owner,
+created_by
+
+FROM orders
+
+LIMIT 20
+
+""", engine)
+
+print(df)

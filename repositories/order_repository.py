@@ -112,7 +112,9 @@ class OrderRepository:
 
         cert_status,
 
-        sale_owner
+        sale_owner,
+        
+        created_by
     ):
 
         with engine.begin() as conn:
@@ -129,7 +131,9 @@ class OrderRepository:
 
                 cert_status,
                               
-                sale_owner                
+                sale_owner,
+                
+                created_by               
 
             )
 
@@ -143,7 +147,9 @@ class OrderRepository:
 
                 :cert_status,
                               
-                :sale_owner                
+                :sale_owner,
+                
+                :created_by              
             )
 
             ON CONFLICT(order_number)
@@ -156,7 +162,9 @@ class OrderRepository:
 
                 cert_status=excluded.cert_status,
                               
-                sale_owner=excluded.sale_owner,              
+                sale_owner=excluded.sale_owner,
+                
+                created_by=excluded.created_by,              
 
                 updated_at=CURRENT_TIMESTAMP
 
@@ -172,7 +180,9 @@ class OrderRepository:
 
                 "cert_status": cert_status,
 
-                "sale_owner": sale_owner
+                "sale_owner": sale_owner,
+                
+                "created_by": created_by
             })
 
         # =========================
