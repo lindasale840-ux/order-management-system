@@ -150,11 +150,19 @@ class DocumentTrackingRepository:
 
         query = """
 
-        SELECT *
+        SELECT
 
-        FROM document_tracking
+            dt.*,
 
-        WHERE id IN (
+            o.customer_name
+
+        FROM document_tracking dt
+
+        LEFT JOIN orders o
+
+            ON dt.order_number = o.order_number
+
+        WHERE dt.id IN (
 
             SELECT MAX(id)
 
@@ -164,12 +172,13 @@ class DocumentTrackingRepository:
 
         )
 
+        ORDER BY dt.id DESC
+
         """
 
         df = pd.read_sql(
             query,
             engine
         )
-        
+
         return convert_utc_columns(df)
-            

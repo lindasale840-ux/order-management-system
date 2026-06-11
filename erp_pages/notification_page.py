@@ -521,9 +521,18 @@ def show_notification_page():
 
         else:
 
+            display_df = pending_return_df[
+                [
+                    "customer_name",
+                    "order_number",
+                    "sent_date",
+                    "note"
+                ]
+            ].copy()
+
             render_aggrid(
 
-                pending_return_df,
+                display_df,
 
                 height=500,
 
@@ -534,7 +543,7 @@ def show_notification_page():
 
             export_button(
 
-                pending_return_df,
+                display_df,
 
                 "pending_return.xlsx"
             )
