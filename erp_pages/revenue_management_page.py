@@ -776,7 +776,73 @@ def show_revenue_management_page():
 
             )
             
-    st.divider()        
+    st.divider() 
+    
+    # =========================
+    # ASSISTANT KPI TABLE
+    # =========================
+
+    if "invoice_created_by" in df.columns:
+
+        assistant_kpi = (
+
+            df[
+                df["invoice_created_by"].notna()
+            ]
+
+            .groupby(
+                "invoice_created_by"
+            )
+
+            .agg({
+
+                "order_number": "count",
+
+                "total": "sum",
+
+                "commission_actual": "sum"
+
+            })
+
+            .reset_index()
+
+            .rename(columns={
+
+                "invoice_created_by": "Assistant",
+
+                "order_number": "Invoice Count",
+
+                "total": "Revenue",
+
+                "commission_actual": "Commission"
+
+            })
+
+        )
+        
+        assistant_kpi = assistant_kpi.sort_values(
+
+            by="Revenue",
+
+            ascending=False
+
+        )
+
+        st.subheader(
+            "👥 Assistant Performance"
+        )
+
+        render_aggrid(
+
+            assistant_kpi,
+
+            height=250,
+
+            page_size=10,
+
+            key="assistant_kpi_grid"
+
+        )       
     # =========================
     # TABLE
     # =========================
