@@ -1,17 +1,5 @@
-import pandas as pd
-from database.connection import engine
+from repositories.order_repository import OrderRepository
 
-df = pd.read_sql("""
+df = OrderRepository.get_all_orders()
 
-SELECT
-order_number,
-sale_owner,
-created_by
-
-FROM orders
-
-LIMIT 20
-
-""", engine)
-
-print(df)
+print(df["sale_owner"].dropna().unique())

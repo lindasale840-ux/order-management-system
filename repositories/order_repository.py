@@ -367,5 +367,38 @@ class OrderRepository:
             )
 
         st.cache_data.clear()   
+        
+        
+    @staticmethod
+    def bulk_transfer_sale_owner(
+        old_owner,
+        new_owner
+    ):
+
+        with engine.begin() as conn:
+
+            conn.execute(
+
+                text("""
+
+                UPDATE orders
+
+                SET sale_owner = :new_owner
+
+                WHERE sale_owner = :old_owner
+
+                """),
+
+                {
+
+                    "old_owner": old_owner,
+
+                    "new_owner": new_owner
+
+                }
+
+            )
+
+        st.cache_data.clear()    
 
 

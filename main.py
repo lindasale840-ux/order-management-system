@@ -88,6 +88,10 @@ from erp_pages.trash_bin_page import (
     show_trash_bin_page
 )
 
+from erp_pages.ownership_transfer_page import (
+    show_ownership_transfer_page
+)
+
 
 # =========================
 # INIT DATABASE
@@ -242,6 +246,8 @@ if role == "ADMIN":
         "📝 Logs",
 
         "👥 User Management",
+        
+        "🔄 Ownership Transfer",
 
         "🗑 Trash Bin",
 
@@ -434,6 +440,10 @@ try:
     elif page == "👥 User Management":
 
         show_user_management_page()
+        
+    elif page == "🔄 Ownership Transfer":
+
+        show_ownership_transfer_page()    
 
     elif page == "🗑 Trash Bin":
 

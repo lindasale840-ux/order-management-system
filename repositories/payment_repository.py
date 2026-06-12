@@ -157,3 +157,36 @@ class PaymentRepository:
             })
 
         st.cache_data.clear()
+        
+    
+    @staticmethod
+    def bulk_transfer_invoice_owner(
+        old_owner,
+        new_owner
+    ):
+
+        with engine.begin() as conn:
+
+            conn.execute(
+
+                text("""
+
+                UPDATE payments
+
+                SET invoice_created_by = :new_owner
+
+                WHERE invoice_created_by = :old_owner
+
+                """),
+
+                {
+
+                    "old_owner": old_owner,
+
+                    "new_owner": new_owner
+
+                }
+
+            )
+
+        st.cache_data.clear()    
