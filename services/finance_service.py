@@ -134,14 +134,23 @@ class FinanceService:
 
             else:
 
+                payment_terms = pd.to_numeric(
+                    row["payment_terms"],
+                    errors="coerce"
+                )
+
+                if pd.isna(payment_terms):
+                    payment_terms = 0
+
+                payment_terms = max(
+                    0,
+                    min(int(payment_terms), 365)
+                )
+
                 due_date = (
                     row["invoice_date"]
                     +
-                    pd.Timedelta(
-                        days=int(
-                            row["payment_terms"]
-                        )
-                    )
+                    pd.Timedelta(days=payment_terms)
                 )
 
                 if today > due_date:

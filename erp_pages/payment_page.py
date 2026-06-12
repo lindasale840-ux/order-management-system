@@ -174,12 +174,17 @@ def show_payment_page():
         payment_terms = st.number_input(
             "Payment Terms",
             min_value=0,
-            value=int(
-                existing_data.get(
-                    "payment_terms",
-                    0
-                ) or 0
-            )
+            max_value=365,
+            value=min(
+                int(
+                    existing_data.get(
+                        "payment_terms",
+                        0
+                    ) or 0
+                ),
+                365
+            ),
+            step=1
         )
 
         total = st.number_input(

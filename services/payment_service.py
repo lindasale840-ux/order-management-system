@@ -27,6 +27,16 @@ class PaymentService:
         note
     ):
 
+        payment_terms = int(payment_terms)
+
+        if payment_terms < 0:
+            payment_terms = 0
+
+        if payment_terms > 365:
+            raise ValueError(
+                "Payment Terms cannot exceed 365 days"
+            )
+            
         commission_actual = (
             total * commission_percent / 100
         )
