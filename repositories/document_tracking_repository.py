@@ -215,3 +215,35 @@ class DocumentTrackingRepository:
         )
 
         return convert_utc_columns(df)
+    
+    @staticmethod
+    @st.cache_data(ttl=30)
+    def get_by_order(order_number):
+
+        query = """
+
+        SELECT *
+
+        FROM document_tracking
+
+        WHERE order_number = :order_number
+
+        ORDER BY id DESC
+
+        """
+
+        df = pd.read_sql(
+
+            text(query),
+
+            engine,
+
+            params={
+
+                "order_number": order_number
+
+            }
+
+        )
+
+        return convert_utc_columns(df)

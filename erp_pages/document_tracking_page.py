@@ -129,6 +129,15 @@ def show_document_tracking_page():
                 )
 
             )
+            
+            tracking_history_df = (
+
+                DocumentTrackingRepository
+                .get_by_order(
+                    selected_order
+                )
+
+            )
 
             existing_data = {}
 
@@ -246,6 +255,59 @@ def show_document_tracking_page():
         )
 
         st.rerun()
+        
+    # =========================
+    # TRACKING HISTORY
+    # =========================
+
+    st.divider()
+
+    st.subheader(
+        "📜 Tracking History"
+    )
+
+    if not tracking_history_df.empty:
+
+        history_display = (
+
+            tracking_history_df[
+
+                [
+
+                    "id",
+
+                    "sent_date",
+
+                    "received_date",
+
+                    "note"
+
+                ]
+
+            ]
+
+            .copy()
+
+        )
+
+        render_aggrid(
+
+            history_display,
+
+            height=220,
+
+            page_size=5,
+
+            key="tracking_history_grid"
+
+        )
+
+    else:
+
+        st.info(
+            "No tracking history"
+        )
+    
 
     st.divider()
 
