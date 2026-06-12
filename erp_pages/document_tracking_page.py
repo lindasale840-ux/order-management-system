@@ -116,6 +116,28 @@ def show_document_tracking_page():
 
                 list(filtered_order_map.keys())
             )
+            
+            selected_order = filtered_order_map[
+                selected_display
+            ]
+
+            latest_tracking = (
+
+                DocumentTrackingRepository
+                .get_latest_by_order(
+                    selected_order
+                )
+
+            )
+
+            existing_data = {}
+
+            if not latest_tracking.empty:
+
+                existing_data = (
+                    latest_tracking.iloc[0]
+                    .to_dict()
+                )
 
         else:
 
@@ -125,32 +147,81 @@ def show_document_tracking_page():
 
             st.stop()
 
+        sent_date_value = pd.Timestamp.today().date()
+
+        if existing_data.get("sent_date") is not None:
+
+            sent_date_value = pd.to_datetime(
+                existing_data["sent_date"]
+            ).date()
+
         sent_date = st.date_input(
-            "Sent Date"
+
+            "Sent Date",
+
+            value=sent_date_value
+
         )
 
     with col2:
 
+        received_date_saved = (
+            existing_data.get(
+                "received_date"
+            )
+        )
+
+        not_received = pd.isna(
+            received_date_saved
+        )
+
         not_received = st.checkbox(
-            "Not Received Yet"
+
+            "Not Received Yet",
+
+            value=not_received
+
         )
 
         if not_received:
 
             received_date = None
 
-            st.info(
-                "Received date will be empty"
-            )
-
         else:
 
+            received_date_value = (
+                pd.Timestamp.today().date()
+            )
+
+            if pd.notna(received_date_saved):
+
+                received_date_value = (
+                    pd.to_datetime(
+                        received_date_saved
+                    ).date()
+                )
+
             received_date = st.date_input(
-                "Received Date"
+
+                "Received Date",
+
+                value=received_date_value
+
             )
 
         note = st.text_input(
-            "Note"
+
+            "Note",
+
+            value=str(
+
+                existing_data.get(
+                    "note",
+                    ""
+                ) or ""
+
+            )
+
         )
 
     if st.button(
