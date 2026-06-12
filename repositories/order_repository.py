@@ -402,3 +402,51 @@ class OrderRepository:
         st.cache_data.clear()    
 
 
+    @staticmethod
+    def transfer_sale_owner_by_orders(
+
+        order_numbers,
+
+        new_sale
+
+    ):
+
+        if not order_numbers:
+
+            return
+
+        placeholders = ",".join(
+
+            [f":p{i}" for i in range(len(order_numbers))]
+
+        )
+
+        params = {
+
+            f"p{i}": order_numbers[i]
+
+            for i in range(len(order_numbers))
+
+        }
+
+        params["new_sale"] = new_sale
+
+        with engine.begin() as conn:
+
+            conn.execute(
+
+                text(f"""
+
+                UPDATE orders
+
+                SET sale_owner = :new_sale
+
+                WHERE order_number IN ({placeholders})
+
+                """),
+
+                params
+
+            )
+
+        st.cache_data.clear()

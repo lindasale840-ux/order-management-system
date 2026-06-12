@@ -189,4 +189,53 @@ class PaymentRepository:
 
             )
 
-        st.cache_data.clear()    
+        st.cache_data.clear()  
+        
+    @staticmethod
+    def transfer_invoice_owner_by_orders(
+
+        order_numbers,
+
+        new_assistant
+
+    ):
+
+        if not order_numbers:
+
+            return
+
+        placeholders = ",".join(
+
+            [f":p{i}" for i in range(len(order_numbers))]
+
+        )
+
+        params = {
+
+            f"p{i}": order_numbers[i]
+
+            for i in range(len(order_numbers))
+
+        }
+
+        params["new_assistant"] = new_assistant
+
+        with engine.begin() as conn:
+
+            conn.execute(
+
+                text(f"""
+
+                UPDATE payments
+
+                SET invoice_created_by = :new_assistant
+
+                WHERE order_number IN ({placeholders})
+
+                """),
+
+                params
+
+            )
+
+        st.cache_data.clear()      

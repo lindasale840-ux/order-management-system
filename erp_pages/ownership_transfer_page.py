@@ -12,6 +12,9 @@ from services.ownership_transfer_service import (
     OwnershipTransferService
 )
 
+from repositories.payment_repository import PaymentRepository
+from repositories.order_repository import OrderRepository
+
 
 def show_ownership_transfer_page():
 
@@ -51,6 +54,17 @@ def show_ownership_transfer_page():
             assistant_users
 
         )
+        
+        payments_df = PaymentRepository.get_all_payments()
+
+        assistant_orders = payments_df[
+            payments_df["invoice_created_by"] == old_assistant
+        ]["order_number"].tolist()
+
+        selected_orders = st.multiselect(
+            "Select Orders",
+            assistant_orders
+        )
 
         new_assistant = st.selectbox(
 
@@ -72,11 +86,23 @@ def show_ownership_transfer_page():
             "Transfer Assistant"
         ):
 
-            if confirm:
+            if not selected_orders:
 
-                OwnershipTransferService.transfer_assistant(
+                st.error(
+                    "Please select at least one order"
+                )
 
-                    old_assistant,
+            elif not confirm:
+
+                st.error(
+                    "Please confirm first"
+                )
+
+            else:
+
+                OwnershipTransferService.transfer_assistant_orders(
+
+                    selected_orders,
 
                     new_assistant
 
@@ -101,6 +127,18 @@ def show_ownership_transfer_page():
             sale_users
 
         )
+        
+        orders_df = OrderRepository.get_all_orders()
+
+        sale_orders = orders_df[
+            orders_df["sale_owner"] == old_sale
+        ]["order_number"].tolist()
+
+        selected_sale_orders = st.multiselect(
+            "Select Orders",
+            sale_orders,
+            key="sale_order_select"
+        )
 
         new_sale = st.selectbox(
 
@@ -122,11 +160,23 @@ def show_ownership_transfer_page():
             "Transfer Sale"
         ):
 
-            if confirm2:
+            if not selected_sale_orders:
 
-                OwnershipTransferService.transfer_sale(
+                st.error(
+                    "Please select at least one order"
+                )
 
-                    old_sale,
+            elif not confirm2:
+
+                st.error(
+                    "Please confirm first"
+                )
+
+            else:
+
+                OwnershipTransferService.transfer_sale_orders(
+
+                    selected_sale_orders,
 
                     new_sale
 

@@ -64,3 +64,56 @@ class OwnershipTransferService:
             f"{old_sale} -> {new_sale}"
 
         )
+        
+    @staticmethod
+    def transfer_assistant_orders(
+        order_numbers,
+        new_assistant
+    ):
+
+        PaymentRepository.transfer_invoice_owner_by_orders(
+
+            order_numbers,
+
+            new_assistant
+
+        )
+
+        LogRepository.add_log(
+
+            "TRANSFER_ASSISTANT_ORDER",
+
+            "",
+
+            "",
+
+            f"{len(order_numbers)} orders -> {new_assistant}"
+
+        )
+
+
+    @staticmethod
+    def transfer_sale_orders(
+        order_numbers,
+        new_sale
+    ):
+
+        OrderRepository.transfer_sale_owner_by_orders(
+
+            order_numbers,
+
+            new_sale
+
+        )
+
+        LogRepository.add_log(
+
+            "TRANSFER_SALE_ORDER",
+
+            "",
+
+            "",
+
+            f"{len(order_numbers)} orders -> {new_sale}"
+
+        )    
