@@ -28,6 +28,12 @@ def show_payment_page():
     require_editor()
 
     st.title("Payment")
+    
+    if st.session_state.get("invoice_saved"):
+
+        st.success("Invoice saved")
+
+        st.session_state["invoice_saved"] = False
 
     customer_df = (
         OrderRepository.get_customers()
@@ -266,8 +272,6 @@ def show_payment_page():
             note
         )
 
-        st.success(
-            "Invoice saved"
-        )
+        st.session_state["invoice_saved"] = True
 
         st.rerun()

@@ -54,6 +54,11 @@ class FinanceService:
         )
 
         today = pd.Timestamp.today()
+        
+        df["payment_terms"] = pd.to_numeric(
+            df["payment_terms"],
+            errors="coerce"
+        ).fillna(0)
 
         df["measurement_date"] = pd.to_datetime(
             df["measurement_date"],

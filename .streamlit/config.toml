@@ -2,4 +2,4 @@
 
 runOnSave = true
 
-fileWatcherType = "None"
+fileWatcherType = "poll"
