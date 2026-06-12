@@ -26,6 +26,14 @@ from utils.auth_guard import (
     require_editor
 )
 
+from repositories.other_document_tracking_repository import (
+    OtherDocumentTrackingRepository
+)
+
+from services.other_document_tracking_service import (
+    OtherDocumentTrackingService
+)
+
 
 def show_document_tracking_page():
 
@@ -33,6 +41,10 @@ def show_document_tracking_page():
 
     st.title(
         "📨 Document Tracking"
+    )
+    
+    st.header(
+        "📋 Order Document Tracking"
     )
 
     orders_df = (
@@ -71,7 +83,9 @@ def show_document_tracking_page():
         )
     )
 
+
     
+        
 
     # =========================
     # SEARCH ORDER
@@ -308,8 +322,11 @@ def show_document_tracking_page():
             "No tracking history"
         )
     
-
     st.divider()
+    
+    st.subheader(
+    "📨 Document Tracking History"
+    )
 
     tracking_df = (
 
@@ -423,3 +440,106 @@ def show_document_tracking_page():
         )
 
         st.rerun()
+        
+    st.divider()
+
+    st.subheader(
+        "📦 Other Document Tracking"
+    )
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+
+        other_customer = st.text_input(
+            "Customer Name"
+        )
+
+        other_doc_type = st.text_input(
+            "Document Type"
+        )
+
+    with col2:
+
+        other_sent_date = st.date_input(
+            "Sent Date",
+            key="other_sent"
+        )
+
+        other_received = st.checkbox(
+            "Not Received Yet",
+            key="other_receive_check"
+        )
+
+        if other_received:
+
+            other_received_date = None
+
+        else:
+
+            other_received_date = st.date_input(
+                "Received Date",
+                key="other_received"
+            )
+
+    other_note = st.text_area(
+        "Note",
+        key="other_note"
+    )
+
+    if st.button(
+        "➕ Add Other Tracking"
+    ):
+
+        OtherDocumentTrackingService.add_tracking(
+
+            other_customer,
+
+            other_doc_type,
+
+            other_sent_date,
+
+            other_received_date,
+
+            other_note
+
+        )
+
+        st.success(
+            "Other tracking added"
+        )
+
+        st.rerun()  
+        
+    st.divider()
+
+    st.subheader(
+        "📦 Other Document Tracking History"
+    )  
+    
+    other_tracking_df = (
+
+        OtherDocumentTrackingRepository
+        .get_all()
+
+    )
+
+    if not other_tracking_df.empty:
+
+        render_aggrid(
+
+            other_tracking_df,
+
+            height=250,
+
+            page_size=10,
+
+            key="other_tracking_grid"
+
+        )
+
+    else:
+
+        st.info(
+            "No other tracking data"
+        )

@@ -334,6 +334,32 @@ def initialize_database():
 
         """))
 
+
+        # =========================
+        # OTHER DOCUMENT TRACKING
+        # =========================
+
+        conn.execute(text("""
+
+        CREATE TABLE IF NOT EXISTS other_document_tracking (
+
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+            customer_name TEXT,
+
+            document_type TEXT,
+
+            sent_date DATE,
+
+            received_date DATE,
+
+            note TEXT,
+
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+
+        )
+
+        """))
         # =========================
         # EQUIPMENT TRACKING
         # =========================
