@@ -44,30 +44,72 @@ def show_payment_page():
     ] + customer_df[
         "customer_name"
     ].tolist()
+    
+    # =========================
+    # GLOBAL SEARCH
+    # =========================
 
-    selected_customer = st.selectbox(
-        "Filter Customer",
-        customer_options
+    search_keyword = st.text_input(
+        "🔍 Search Customer / Order Number"
+    ).strip()
+    
+    # =========================
+    # SEARCH CUSTOMER
+    # =========================
+
+    # search_customer = st.text_input(
+       #  "🔍 Search Customer"
+    # )
+
+    # if search_customer:
+
+        # filtered_customers = [
+
+        #     c for c in customer_options
+
+         #    if search_customer.lower() in c.lower()
+
+       #  ]
+
+   #  else:
+
+      #   filtered_customers = customer_options
+
+    order_df = (
+        OrderRepository.get_all_orders()
     )
 
-    if selected_customer == "ALL":
+    order_df = filter_by_sale_owner(
+        order_df
+    )
 
-        order_df = (
-            OrderRepository.get_all_orders()
-        )
+    # =========================
+    # SEARCH FILTER
+    # =========================
 
-        order_df = filter_by_sale_owner(
-            order_df
-        )
+    if search_keyword:
 
-    else:
+        order_df = order_df[
 
-        order_df = (
-            OrderRepository
-            .get_orders_by_customer(
-                selected_customer
+            order_df["customer_name"]
+            .astype(str)
+            .str.contains(
+                search_keyword,
+                case=False,
+                na=False
             )
-        )
+
+            |
+
+            order_df["order_number"]
+            .astype(str)
+            .str.contains(
+                search_keyword,
+                case=False,
+                na=False
+            )
+
+        ]
 
     order_list = (
         order_df["order_number"]
@@ -79,6 +121,14 @@ def show_payment_page():
         st.warning("No orders")
         return
 
+    if order_df.empty:
+
+        st.warning(
+            "No matching customer or order found"
+        )
+
+        return
+    
     selected_order = st.selectbox(
         "Order Number",
         order_list
