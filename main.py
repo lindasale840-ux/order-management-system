@@ -125,6 +125,11 @@ if not st.session_state["logged_in"]:
     show_login_page()
 
     st.stop()
+    
+# --- THÊM ĐOẠN NÀY VÀO ---
+# Khởi tạo trang mặc định ban đầu nếu chưa có trong session
+if "current_page" not in st.session_state:
+    st.session_state["current_page"] = "📊 Dashboard"    
 
 # =========================
 # CUSTOM CSS
@@ -305,12 +310,22 @@ elif role == "SALE":
         "📝 Logs"
     ]
 
+# Xác định index của trang hiện tại trong menu_options để giữ vị trí radio
+try:
+    default_index = menu_options.index(st.session_state["current_page"])
+except ValueError:
+    default_index = 0  # Nếu không tìm thấy (hoặc đổi role), mặc định về trang đầu tiên
+
+# Sử dụng tham số index và bổ sung key để Streamlit quản lý trạng thái ổn định hơn
 page = st.sidebar.radio(
-
     "Navigation",
-
-    menu_options
+    menu_options,
+    index=default_index,
+    key="navigation_radio"
 )
+
+# Cập nhật lại session_state ngay khi người dùng chủ động bấm chuyển trang ở menu
+st.session_state["current_page"] = page
 
 st.sidebar.divider()
 
