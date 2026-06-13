@@ -1,27 +1,11 @@
-from sqlalchemy import text
+import sqlite3
 
-from database.connection import engine
+conn = sqlite3.connect("database/app.db")
 
-order_number = "GST_VN2026060107HN"
+cursor = conn.cursor()
 
-with engine.begin() as conn:
+cursor.execute(
+    "SELECT name FROM sqlite_master WHERE type='table'"
+)
 
-    conn.execute(
-
-        text("""
-
-        UPDATE payments
-
-        SET payment_terms = 30
-
-        WHERE order_number = :order_number
-
-        """),
-
-        {
-            "order_number": order_number
-        }
-
-    )
-
-print("Done")
+print(cursor.fetchall())
