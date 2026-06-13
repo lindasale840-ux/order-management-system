@@ -1,11 +1,9 @@
-import sqlite3
+from database.connection import engine
+from sqlalchemy import text
 
-conn = sqlite3.connect("database/app.db")
+with engine.begin() as conn:
+    result = conn.execute(
+        text("SELECT COUNT(*) FROM orders")
+    )
 
-cursor = conn.cursor()
-
-cursor.execute(
-    "SELECT name FROM sqlite_master WHERE type='table'"
-)
-
-print(cursor.fetchall())
+    print(result.scalar())

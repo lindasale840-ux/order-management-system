@@ -97,7 +97,7 @@ from erp_pages.ownership_transfer_page import (
 # INIT DATABASE
 # =========================
 
-initialize_database()
+# initialize_database()
 
 # =========================
 # PAGE CONFIG
