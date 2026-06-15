@@ -33,22 +33,88 @@ def show_dashboard_page():
 
         with col1:
 
-            customer_name = st.text_input(
-                "Customer Name"
-            )
-
             order_number = st.text_input(
                 "Order Number"
             )
 
+            existing_order = {}
+
+            if order_number.strip():
+
+                existing_df = (
+
+                    OrderRepository
+                    .get_by_order_number(
+                        order_number.strip()
+                    )
+
+                )
+
+                if not existing_df.empty:
+
+                    existing_order = (
+
+                        existing_df.iloc[0]
+                        .to_dict()
+                    )
+
+            customer_name = st.text_input(
+
+                "Customer Name",
+
+                value=str(
+
+                    existing_order.get(
+                        "customer_name",
+                        ""
+                    ) or ""
+
+                )
+
+            )
+
         with col2:
 
+            measurement_value = pd.Timestamp.today().date()
+
+            if existing_order.get(
+                "measurement_date"
+            ) is not None:
+
+                measurement_value = (
+
+                    pd.to_datetime(
+
+                        existing_order[
+                            "measurement_date"
+                        ]
+
+                    ).date()
+
+                )
+
             measurement_date = st.date_input(
-                "Measurement Date"
+
+                "Measurement Date",
+
+                value=measurement_value
+
+            )
+
+            cert_saved = existing_order.get(
+                "cert_status"
+            )
+
+            default_no_cert = pd.isna(
+                cert_saved
             )
 
             no_cert = st.checkbox(
-                "No Cert Yet"
+
+                "No Cert Yet",
+
+                value=default_no_cert
+
             )
 
             if no_cert:
@@ -61,8 +127,24 @@ def show_dashboard_page():
 
             else:
 
+                cert_value = pd.Timestamp.today().date()
+
+                if pd.notna(cert_saved):
+
+                    cert_value = (
+
+                        pd.to_datetime(
+                            cert_saved
+                        ).date()
+
+                    )
+
                 cert_status = st.date_input(
-                    "Cert Status"
+
+                    "Cert Status",
+
+                    value=cert_value
+
                 )
 
         if st.button("Sync Order"):

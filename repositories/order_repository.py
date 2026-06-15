@@ -450,3 +450,27 @@ class OrderRepository:
             )
 
         st.cache_data.clear()
+        
+    @staticmethod
+    def get_by_order_number(order_number):
+
+        query = """
+        SELECT *
+        FROM orders
+        WHERE order_number = :order_number
+        LIMIT 1
+        """
+
+        df = pd.read_sql(
+
+            text(query),
+
+            engine,
+
+            params={
+                "order_number": order_number
+            }
+
+        )
+
+        return df    
