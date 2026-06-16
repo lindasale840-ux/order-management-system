@@ -18,7 +18,7 @@ from utils.data_permission import (
 class FinanceService:
 
     @staticmethod
-    @st.cache_data(ttl=60)
+    @st.cache_data(ttl=10)
     def build_finance_dataframe():
 
         print(

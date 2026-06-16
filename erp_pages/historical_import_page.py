@@ -492,6 +492,11 @@ def show_historical_import_page():
                 else st.session_state["username"]
 
             )
+            
+            print(
+                "measurement_date =",
+                measurement_date
+            )
 
             DashboardService.sync_order(
 
@@ -599,6 +604,8 @@ def show_historical_import_page():
 
             imported_payments += 1
 
+        st.cache_data.clear()
+        
         st.success(
 
             f"""
@@ -609,3 +616,5 @@ def show_historical_import_page():
             Payments: {imported_payments}
             """
         )
+        
+        st.rerun()
