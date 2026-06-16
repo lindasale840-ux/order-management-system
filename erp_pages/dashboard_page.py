@@ -227,6 +227,24 @@ def show_dashboard_page():
     st.divider()
 
     df = OrderRepository.get_all_orders()
+    
+    df["measurement_date"] = pd.to_datetime(
+
+        df["measurement_date"],
+
+        errors="coerce"
+
+    )
+
+    df["next_calibration_date"] = (
+
+        df["measurement_date"]
+
+        +
+
+        pd.DateOffset(months=11)
+
+    )
 
     df = filter_by_sale_owner(df)
 

@@ -120,6 +120,16 @@ def show_notification_page():
         "Due Soon"
 
     ]
+    
+    calibration_overdue_df = df[
+
+        df["cert_overdue"]
+
+        ==
+
+        "Overdue"
+
+    ]
 
     missing_invoice_df = df[
 
@@ -233,7 +243,7 @@ def show_notification_page():
     # KPI SUMMARY
     # =========================
 
-    col1, col2, col3, col4, col5, col6 = st.columns(6)
+    col1, col2, col3, col4, col5, col6, col7 = st.columns(7)
 
     with col1:
 
@@ -287,11 +297,21 @@ def show_notification_page():
             "📬 Pending Return",
 
             len(pending_return_df)
-        )    
+        )  
+        
+    with col7:
+
+        st.metric(
+
+            "⛔ Calibration Overdue",
+
+            len(calibration_overdue_df)
+
+        )      
 
     st.divider()
 
-    tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
+    tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
 
         f"📄 Missing Cert ({len(missing_cert_df)})",
 
@@ -303,7 +323,9 @@ def show_notification_page():
 
         f"📨 Missing Send ({len(missing_document_df)})",
 
-        f"📬 Pending Return ({len(pending_return_df)})"
+        f"📬 Pending Return ({len(pending_return_df)})",
+
+        f"⛔ Calibration Overdue ({len(calibration_overdue_df)})"
 
     ])
 
@@ -547,3 +569,45 @@ def show_notification_page():
 
                 "pending_return.xlsx"
             )
+            
+    # =========================
+    # TAB 7
+    # =========================
+
+    with tab7:
+
+        st.metric(
+
+            "Calibration Overdue",
+
+            len(calibration_overdue_df)
+
+        )
+
+        if calibration_overdue_df.empty:
+
+            st.success(
+                "No overdue calibration"
+            )
+
+        else:
+
+            render_aggrid(
+
+                calibration_overdue_df,
+
+                height=500,
+
+                page_size=10,
+
+                key="calibration_overdue_grid"
+
+            )
+
+            export_button(
+
+                calibration_overdue_df,
+
+                "calibration_overdue.xlsx"
+
+            )        
