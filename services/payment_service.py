@@ -24,7 +24,8 @@ class PaymentService:
         payment_status,
         total,
         commission_percent,
-        note
+        note,
+        invoice_created_by=None
     ):
 
         payment_terms = int(payment_terms)
@@ -61,7 +62,9 @@ class PaymentService:
 
             note,
             
-            st.session_state["username"]
+            invoice_created_by
+            if invoice_created_by
+            else st.session_state["username"]
         )
 
         OrderRepository.update_invoice_group(
