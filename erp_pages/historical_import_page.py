@@ -18,17 +18,18 @@ from utils.auth_guard import (
     require_admin
 )
 
-from repositories.order_repository import (
-    OrderRepository
+from services.dashboard_service import (
+    DashboardService
 )
 
-from repositories.payment_repository import (
-    PaymentRepository
+from services.payment_service import (
+    PaymentService
 )
 
-from repositories.log_repository import (
-    LogRepository
+from repositories.user_repository import (
+    UserRepository
 )
+
 
 def generate_template():
     
@@ -366,6 +367,30 @@ def show_historical_import_page():
             validation_errors.append(
                 "Commission percent > 100"
             )
+            
+        invalid_payment_terms = df[
+            df["payment_terms"].fillna(0) > 365
+        ]
+
+        if not invalid_payment_terms.empty:
+
+            validation_errors.append(
+                "Payment Terms > 365"
+            )
+            
+        users_df = UserRepository.get_all_users()
+
+        valid_users = users_df["username"].tolist()
+
+        invalid_created_by = df[
+            ~df["created_by"].isin(valid_users)
+        ]
+
+        if not invalid_created_by.empty:
+
+            validation_errors.append(
+                "Invalid created_by username found"
+            )        
 
         if validation_errors:
 
@@ -468,7 +493,7 @@ def show_historical_import_page():
 
             )
 
-            OrderRepository.upsert_order(
+            DashboardService.sync_order(
 
                 customer_name=row.get(
                     "customer_name"
@@ -496,21 +521,21 @@ def show_historical_import_page():
             # LOG
             # =========================
             
-            LogRepository.add_log(
+           # LogRepository.add_log(
 
-                "HISTORICAL_IMPORT",
+            #    "HISTORICAL_IMPORT",
 
-                row.get(
-                    "customer_name"
-                ),
+             #   row.get(
+             #       "customer_name"
+              #  ),
 
-                row.get(
-                    "order_number"
-                ),
+               # row.get(
+                #    "order_number"
+               # ),
 
-                "Historical import"
+                #"Historical import"
 
-            )
+           # )
 
             # =========================
             # PAYMENT
@@ -538,8 +563,13 @@ def show_historical_import_page():
                 / 100
 
             )
+            
+            payment_terms = row.get("payment_terms", 0)
+
+            if pd.isna(payment_terms):
+                payment_terms = 0
                         
-            PaymentRepository.upsert_payment(
+            PaymentService.save_invoice(
 
                 order_number=row.get(
                     "order_number"
@@ -551,27 +581,20 @@ def show_historical_import_page():
                     "invoice_group"
                 ),
 
-                payment_terms=row.get(
-                    "payment_terms"
-                ),
+                payment_terms=payment_terms,
 
                 payment_status=payment_status,
 
-                total=row.get(
-                    "total"
-                ),
+                total=total,
 
                 commission_percent=commission_percent,
 
-                commission_actual=commission_actual,
-                
                 note=row.get(
                     "note"
                 ),
-                
+
                 invoice_created_by=created_by
 
-                
             )
 
             imported_payments += 1
