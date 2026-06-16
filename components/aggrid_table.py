@@ -33,7 +33,17 @@ def render_aggrid(
 
         floatingFilter=True,
 
-        editable=False
+        editable=False,
+
+        wrapHeaderText=True,
+
+        autoHeaderHeight=True,
+
+        wrapText=True,
+
+        autoHeight=True,
+
+        minWidth=120
     )
 
     # =========================
@@ -163,7 +173,7 @@ def render_aggrid(
 
         update_mode=GridUpdateMode.NO_UPDATE,
 
-        fit_columns_on_grid_load=True,
+        fit_columns_on_grid_load=False,
 
         enable_enterprise_modules=False,
 

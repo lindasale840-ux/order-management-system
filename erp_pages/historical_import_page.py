@@ -30,6 +30,9 @@ from repositories.user_repository import (
     UserRepository
 )
 
+from repositories.order_repository import (
+    OrderRepository
+)
 
 def generate_template():
     
@@ -326,6 +329,47 @@ def show_historical_import_page():
 
     st.dataframe(
         df,
+        use_container_width=True
+    )
+    
+    preview_rows = []
+
+    for _, row in df.iterrows():
+
+        order_number = row.get("order_number")
+
+        existing = OrderRepository.get_by_order_number(
+            order_number
+        )
+
+        action = (
+            "UPDATE"
+            if not existing.empty
+            else "NEW"
+        )
+
+        preview_rows.append({
+
+            "order_number": order_number,
+
+            "customer_name": row.get(
+                "customer_name"
+            ),
+
+            "action": action
+
+        })
+
+    preview_df = pd.DataFrame(
+        preview_rows
+    )
+
+    st.subheader(
+        "📋 Import Preview"
+    )
+
+    st.dataframe(
+        preview_df,
         use_container_width=True
     )
     
