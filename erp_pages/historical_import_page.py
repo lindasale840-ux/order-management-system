@@ -26,6 +26,9 @@ from repositories.payment_repository import (
     PaymentRepository
 )
 
+from repositories.log_repository import (
+    LogRepository
+)
 
 def generate_template():
     
@@ -36,13 +39,16 @@ def generate_template():
         "measurement_date",
         "cert_status",
         "sale_owner",
+        "created_by",
+
         "invoice_group",
         "invoice_date",
         "payment_terms",
         "payment_status",
+
         "total",
         "commission_percent",
-        "commission_actual",
+
         "note"
     ]
 
@@ -138,6 +144,8 @@ def generate_template():
 
             "LINDA",
 
+            "Thịnh",
+
             "INV001",
 
             "2026-06-10",
@@ -149,8 +157,6 @@ def generate_template():
             5000000,
 
             10,
-
-            500000,
 
             "Historical import example"
         ]
@@ -239,6 +245,8 @@ def generate_template():
             ["cert_status","NO","Certificate Date","2026-06-05"],
 
             ["sale_owner","YES","Sales Owner","LINDA"],
+            
+            ["created_by","YES","Assistant Owner","Thịnh"],
 
             ["invoice_group","NO","Invoice Group","INV001"],
 
@@ -321,10 +329,73 @@ def show_historical_import_page():
         df,
         use_container_width=True
     )
+    
+    validation_errors = []
+    
+    if st.button("🔍 Validate File"):
 
+        if df["customer_name"].isna().any():
+            validation_errors.append("Missing customer_name")
+
+        if df["order_number"].isna().any():
+            validation_errors.append("Missing order_number")
+
+        if df["sale_owner"].isna().any():
+            validation_errors.append("Missing sale_owner")
+
+        if "created_by" in df.columns:
+
+            if df["created_by"].isna().any():
+                validation_errors.append("Missing created_by")
+
+        duplicates = df[
+            df["order_number"]
+            .duplicated(keep=False)
+        ]
+
+        if not duplicates.empty:
+
+            validation_errors.append(
+                f"Duplicate order_number found: {duplicates['order_number'].tolist()}"
+            )
+
+        invalid_commission = df[
+            df["commission_percent"] > 100
+        ]
+
+        if not invalid_commission.empty:
+
+            validation_errors.append(
+                "Commission percent > 100"
+            )
+
+        if validation_errors:
+
+            st.error("Validation Failed")
+
+            for err in validation_errors:
+
+                st.write("❌", err)
+
+        else:
+
+            st.success("Validation Passed")
+
+    confirm_import = st.checkbox(
+        "I confirm importing historical data"
+    )
+    
     if st.button(
-    "🚀 Import To ERP"
+        "🚀 Import To ERP"
     ):
+
+        if not confirm_import:
+
+            st.error(
+                "Please confirm first"
+            )
+
+            st.stop()
 
         imported_orders = 0
         imported_payments = 0
@@ -387,6 +458,18 @@ def show_historical_import_page():
             # ORDER
             # =========================
 
+            created_by = (
+
+                row.get("created_by")
+
+                if pd.notna(
+                    row.get("created_by")
+                )
+
+                else st.session_state["username"]
+
+            )
+
             OrderRepository.upsert_order(
 
                 customer_name=row.get(
@@ -403,15 +486,61 @@ def show_historical_import_page():
 
                 sale_owner=row.get(
                     "sale_owner"
-                )
+                ),
+
+                created_by=created_by
+
             )
 
             imported_orders += 1
+            
+            # =========================
+            # LOG
+            # =========================
+            
+            LogRepository.add_log(
+
+                "HISTORICAL_IMPORT",
+
+                row.get(
+                    "customer_name"
+                ),
+
+                row.get(
+                    "order_number"
+                ),
+
+                "Historical import"
+
+            )
 
             # =========================
             # PAYMENT
             # =========================
+            
+            total = float(
+                row.get("total", 0) or 0
+            )
 
+            commission_percent = float(
+                row.get(
+                    "commission_percent",
+                    0
+                ) or 0
+            )
+
+            commission_actual = (
+
+                total
+
+                *
+
+                commission_percent
+
+                / 100
+
+            )
+                        
             PaymentRepository.upsert_payment(
 
                 order_number=row.get(
@@ -434,13 +563,11 @@ def show_historical_import_page():
                     "total"
                 ),
 
-                commission_percent=row.get(
-                    "commission_percent"
-                ),
+                commission_percent=commission_percent,
 
-                commission_actual=row.get(
-                    "commission_actual"
-                ),
+                commission_actual=commission_actual,
+                
+                invoice_created_by=created_by,
 
                 note=row.get(
                     "note"
