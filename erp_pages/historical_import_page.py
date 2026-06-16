@@ -209,7 +209,7 @@ def generate_template():
         )
 
         payment_terms_validation.add(
-            "H2:H5000"
+            "I2:I5000"
         )
 
         # =====================
@@ -259,8 +259,6 @@ def generate_template():
             ["total","NO","Revenue","5000000"],
 
             ["commission_percent","NO","Commission %","10"],
-
-            ["commission_actual","NO","Commission Amount","500000"],
 
             ["note","NO","Remark","Historical import"]
         ]
@@ -567,11 +565,13 @@ def show_historical_import_page():
 
                 commission_actual=commission_actual,
                 
-                invoice_created_by=created_by,
-
                 note=row.get(
                     "note"
-                )
+                ),
+                
+                invoice_created_by=created_by
+
+                
             )
 
             imported_payments += 1
