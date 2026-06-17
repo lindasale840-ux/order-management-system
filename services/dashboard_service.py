@@ -19,7 +19,8 @@ class DashboardService:
         cert_status,
         sale_owner,
         created_by,
-        disable_calibration_notification=0
+        disable_calibration_notification=0,
+        disable_document_notification=0
     ):
 
         OrderRepository.upsert_order(
@@ -36,7 +37,9 @@ class DashboardService:
             
             created_by,
             
-            disable_calibration_notification
+            disable_calibration_notification,
+            
+            disable_document_notification
         )
 
         st.cache_data.clear()

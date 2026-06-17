@@ -206,9 +206,27 @@ def show_notification_page():
                 sent_orders
             )
         )
+        
+        &
+        (
+            missing_document_df[
+                "disable_document_notification"
+            ]
+            != 1
+        )
     ]
 
     pending_return_df = tracking_df.copy()
+    
+    ignore_orders = set(
+
+        df[
+            df[
+                "disable_document_notification"
+            ] == 1
+        ]["order_number"]
+
+    )
 
     if not pending_return_df.empty:
 
@@ -253,6 +271,15 @@ def show_notification_page():
                     -
                     pending_return_df["sent_date"]
                 ).dt.days.gt(DOCUMENT_WARNING_DAYS)
+
+            ]
+
+            pending_return_df = pending_return_df[
+
+                ~pending_return_df[
+                    "order_number"
+                ].isin(ignore_orders)
+
             ]
 
     # =========================

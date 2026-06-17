@@ -93,14 +93,20 @@ class SidebarNotificationService:
             errors="coerce"
         )
 
+        ignore_orders = set(
+
+            df[
+                df["disable_document_notification"] == 1
+            ]["order_number"]
+
+        )
+
         missing_send_df = cert_orders_df[
 
             (
                 today
                 -
-                cert_orders_df[
-                    "cert_status"
-                ]
+                cert_orders_df["cert_status"]
             ).dt.days.gt(DOCUMENT_WARNING_DAYS)
 
             &
@@ -109,6 +115,14 @@ class SidebarNotificationService:
                 "order_number"
             ].astype(str).isin(
                 sent_orders
+            )
+
+            &
+
+            ~cert_orders_df[
+                "order_number"
+            ].astype(str).isin(
+                ignore_orders
             )
         ]
 
@@ -147,6 +161,15 @@ class SidebarNotificationService:
                         "sent_date"
                     ]
                 ).dt.days.gt(DOCUMENT_WARNING_DAYS)
+            ]
+            
+            pending_return_df = pending_return_df[
+
+                ~pending_return_df[
+                    "order_number"
+                ].astype(str).isin(
+                    ignore_orders
+                )
             ]
 
             pending_return = len(

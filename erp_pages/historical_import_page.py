@@ -46,6 +46,7 @@ def generate_template():
         "created_by",
         
         "disable_calibration_notification",
+        "disable_document_notification",
 
         "invoice_group",
         "invoice_date",
@@ -152,6 +153,7 @@ def generate_template():
 
             "Thịnh",
             
+            0,
             0,
 
             "INV001",
@@ -260,6 +262,13 @@ def generate_template():
             "NO",
             "0=Track, 1=Disable notification",
             "0"],
+            
+            [
+                "disable_document_notification",
+                "NO",
+                "0=Track, 1=Disable document notification",
+                "0"
+            ],
 
             ["invoice_group","NO","Invoice Group","INV001"],
 
@@ -375,6 +384,11 @@ def show_historical_import_page():
 
             "disable_notification": row.get(
                 "disable_calibration_notification",
+                0
+            ),
+            
+            "disable_document_notification": row.get(
+                "disable_document_notification",
                 0
             ),
 
@@ -651,6 +665,20 @@ def show_historical_import_page():
                 )
                 or 0
             )
+            
+            disable_document_notification = int(
+
+                row.get(
+
+                    "disable_document_notification",
+
+                    0
+
+                )
+
+                or 0
+
+            )
 
             DashboardService.sync_order(
 
@@ -673,7 +701,10 @@ def show_historical_import_page():
                 created_by=created_by,
                 
                 disable_calibration_notification=
-                    disable_notification
+                    disable_notification,
+                    
+                disable_document_notification=
+                    disable_document_notification    
 
             )
 

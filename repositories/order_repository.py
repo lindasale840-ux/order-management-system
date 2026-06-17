@@ -116,7 +116,9 @@ class OrderRepository:
         
         created_by,
         
-        disable_calibration_notification=0
+        disable_calibration_notification=0,
+        
+        disable_document_notification=0
     ):
 
         with engine.begin() as conn:
@@ -137,7 +139,9 @@ class OrderRepository:
                 
                 created_by,
                 
-                disable_calibration_notification               
+                disable_calibration_notification,
+                
+                disable_document_notification               
 
             )
 
@@ -155,7 +159,9 @@ class OrderRepository:
                 
                 :created_by,
                 
-                :disable_calibration_notification              
+                :disable_calibration_notification,
+                
+                :disable_document_notification              
             )
 
             ON CONFLICT(order_number)
@@ -173,7 +179,10 @@ class OrderRepository:
                 created_by=excluded.created_by,
                 
                 disable_calibration_notification=
-                excluded.disable_calibration_notification,              
+                excluded.disable_calibration_notification,
+                
+                disable_document_notification=
+                excluded.disable_document_notification,              
 
                 updated_at=CURRENT_TIMESTAMP
 
@@ -194,7 +203,10 @@ class OrderRepository:
                 "created_by": created_by,
                 
                 "disable_calibration_notification":
-                disable_calibration_notification
+                disable_calibration_notification,
+                
+                "disable_document_notification":
+                disable_document_notification
             })
 
         # =========================

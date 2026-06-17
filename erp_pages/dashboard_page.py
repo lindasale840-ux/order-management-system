@@ -163,7 +163,25 @@ def show_dashboard_page():
 
                 )
 
-            )    
+            )   
+            
+            disable_document_notification = st.checkbox(
+
+                "Disable Document Notification",
+
+                value=bool(
+
+                    existing_order.get(
+
+                        "disable_document_notification",
+
+                        0
+
+                    )
+
+                )
+
+            ) 
 
         if st.button("Sync Order"):
 
@@ -191,7 +209,9 @@ def show_dashboard_page():
                 
                 st.session_state["username"],
                 
-                disable_calibration_notification
+                disable_calibration_notification,
+                
+                disable_document_notification
             )
 
             st.success("Order synced")
