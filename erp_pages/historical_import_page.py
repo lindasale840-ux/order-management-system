@@ -219,7 +219,7 @@ def generate_template():
         )
 
         payment_terms_validation.add(
-            "J2:J5000"
+            "K2:K5000"
         )
 
         # =====================
