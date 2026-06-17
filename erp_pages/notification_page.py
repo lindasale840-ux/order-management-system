@@ -113,21 +113,37 @@ def show_notification_page():
 
     due_soon_df = df[
 
-        df["cert_due_soon"]
+        (df["cert_due_soon"] == "Due Soon")
 
-        ==
+        &
 
-        "Due Soon"
+        (
+
+            df["disable_calibration_notification"]
+
+            !=
+
+            1
+
+        )
 
     ]
     
     calibration_overdue_df = df[
 
-        df["cert_overdue"]
+        (df["cert_overdue"] == "Overdue")
 
-        ==
+        &
 
-        "Overdue"
+        (
+
+            df["disable_calibration_notification"]
+
+            !=
+
+            1
+
+        )
 
     ]
 

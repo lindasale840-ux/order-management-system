@@ -146,6 +146,24 @@ def show_dashboard_page():
                     value=cert_value
 
                 )
+                
+            disable_calibration_notification = st.checkbox(
+
+                "Disable Calibration Notification",
+
+                value=bool(
+
+                    existing_order.get(
+
+                        "disable_calibration_notification",
+
+                        0
+
+                    )
+
+                )
+
+            )    
 
         if st.button("Sync Order"):
 
@@ -171,7 +189,9 @@ def show_dashboard_page():
 
                 st.session_state["sale_owner"],
                 
-                st.session_state["username"]
+                st.session_state["username"],
+                
+                disable_calibration_notification
             )
 
             st.success("Order synced")
@@ -216,7 +236,12 @@ def show_dashboard_page():
 
                         st.session_state["sale_owner"],
                         
-                        st.session_state["username"]
+                        st.session_state["username"],
+                        
+                        row.get(
+                            "disable_calibration_notification",
+                            0
+                        )
                     )
 
                 st.success(

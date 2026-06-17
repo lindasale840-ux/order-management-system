@@ -44,6 +44,8 @@ def generate_template():
         "cert_status",
         "sale_owner",
         "created_by",
+        
+        "disable_calibration_notification",
 
         "invoice_group",
         "invoice_date",
@@ -149,6 +151,8 @@ def generate_template():
             "LINDA",
 
             "Thịnh",
+            
+            0,
 
             "INV001",
 
@@ -213,7 +217,7 @@ def generate_template():
         )
 
         payment_terms_validation.add(
-            "I2:I5000"
+            "J2:J5000"
         )
 
         # =====================
@@ -251,6 +255,11 @@ def generate_template():
             ["sale_owner","YES","Sales Owner","LINDA"],
             
             ["created_by","YES","Assistant Owner","Thịnh"],
+            
+            ["disable_calibration_notification",
+            "NO",
+            "0=Track, 1=Disable notification",
+            "0"],
 
             ["invoice_group","NO","Invoice Group","INV001"],
 
@@ -356,6 +365,19 @@ def show_historical_import_page():
                 "customer_name"
             ),
 
+            "sale_owner": row.get(
+                "sale_owner"
+            ),
+
+            "assistant": row.get(
+                "created_by"
+            ),
+
+            "disable_notification": row.get(
+                "disable_calibration_notification",
+                0
+            ),
+
             "action": action
 
         })
@@ -430,6 +452,26 @@ def show_historical_import_page():
             ~df["created_by"].isin(valid_users)
         ]
 
+        if "disable_calibration_notification" in df.columns:
+
+            invalid_disable = df[
+
+                ~df["disable_calibration_notification"]
+
+                .fillna(0)
+
+                .isin([0, 1])
+
+            ]
+
+            if not invalid_disable.empty:
+
+                validation_errors.append(
+
+                    "disable_calibration_notification must be 0 or 1"
+
+                )
+        
         if not invalid_created_by.empty:
 
             validation_errors.append(
@@ -537,9 +579,12 @@ def show_historical_import_page():
 
             )
             
-            print(
-                "measurement_date =",
-                measurement_date
+            disable_notification = int(
+                row.get(
+                    "disable_calibration_notification",
+                    0
+                )
+                or 0
             )
 
             DashboardService.sync_order(
@@ -560,7 +605,10 @@ def show_historical_import_page():
                     "sale_owner"
                 ),
 
-                created_by=created_by
+                created_by=created_by,
+                
+                disable_calibration_notification=
+                    disable_notification
 
             )
 

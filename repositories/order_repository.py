@@ -114,7 +114,9 @@ class OrderRepository:
 
         sale_owner,
         
-        created_by
+        created_by,
+        
+        disable_calibration_notification=0
     ):
 
         with engine.begin() as conn:
@@ -133,7 +135,9 @@ class OrderRepository:
                               
                 sale_owner,
                 
-                created_by               
+                created_by,
+                
+                disable_calibration_notification               
 
             )
 
@@ -149,7 +153,9 @@ class OrderRepository:
                               
                 :sale_owner,
                 
-                :created_by              
+                :created_by,
+                
+                :disable_calibration_notification              
             )
 
             ON CONFLICT(order_number)
@@ -164,7 +170,10 @@ class OrderRepository:
                               
                 sale_owner=excluded.sale_owner,
                 
-                created_by=excluded.created_by,              
+                created_by=excluded.created_by,
+                
+                disable_calibration_notification=
+                excluded.disable_calibration_notification,              
 
                 updated_at=CURRENT_TIMESTAMP
 
@@ -182,7 +191,10 @@ class OrderRepository:
 
                 "sale_owner": sale_owner,
                 
-                "created_by": created_by
+                "created_by": created_by,
+                
+                "disable_calibration_notification":
+                disable_calibration_notification
             })
 
         # =========================

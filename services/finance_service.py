@@ -226,63 +226,75 @@ class FinanceService:
             # =========================
             # CALIBRATION OVERDUE
             # =========================
+            if row.get(
 
-            if pd.notna(
-                row["measurement_date"]
-            ):
+                "disable_calibration_notification",
 
-                calibration_due = (
+                0
 
-                    row["measurement_date"]
+            ) == 1:
 
-                    +
+                cert_overdue = "Ignore"
 
-                    pd.DateOffset(
-                        months=11
-                    )
-                )
-
-                remaining_days = (
-
-                    calibration_due
-                    -
-                    today
-
-                ).days
-
-                if remaining_days < 0:
-
-                    cert_overdue = (
-                        "Overdue"
-                    )
-
-                else:
-
-                    cert_overdue = (
-                        "OK"
-                    )
-
-                if (
-                    0
-                    <=
-                    remaining_days
-                    <=
-                    30
-                ):
-
-                    cert_due_soon = (
-                        "Due Soon"
-                    )
-
-                else:
-
-                    cert_due_soon = "No"
+                cert_due_soon = "Ignore"
 
             else:
+                if pd.notna(
+                    row["measurement_date"]
+                ):
 
-                cert_overdue = "Unknown"
+                    calibration_due = (
 
-                cert_due_soon = "Unknown"
+                        row["measurement_date"]
+
+                        +
+
+                        pd.DateOffset(
+                            months=11
+                        )
+                    )
+
+                    remaining_days = (
+
+                        calibration_due
+                        -
+                        today
+
+                    ).days
+
+                    if remaining_days < 0:
+
+                        cert_overdue = (
+                            "Overdue"
+                        )
+
+                    else:
+
+                        cert_overdue = (
+                            "OK"
+                        )
+
+                    if (
+                        0
+                        <=
+                        remaining_days
+                        <=
+                        30
+                    ):
+
+                        cert_due_soon = (
+                            "Due Soon"
+                        )
+
+                    else:
+
+                        cert_due_soon = "No"
+
+                else:
+
+                    cert_overdue = "Unknown"
+
+                    cert_due_soon = "Unknown"
 
             cert_overdue_list.append(
                 cert_overdue

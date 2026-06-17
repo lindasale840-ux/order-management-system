@@ -61,6 +61,19 @@ def initialize_database():
         except Exception:
 
             pass
+        
+        try:
+
+            conn.execute(text("""
+
+            ALTER TABLE orders
+            ADD COLUMN disable_calibration_notification INTEGER DEFAULT 0
+
+            """))
+
+        except Exception:
+
+            pass
 
         try:
 

@@ -18,7 +18,8 @@ class DashboardService:
         measurement_date,
         cert_status,
         sale_owner,
-        created_by
+        created_by,
+        disable_calibration_notification=0
     ):
 
         OrderRepository.upsert_order(
@@ -33,7 +34,9 @@ class DashboardService:
 
             sale_owner,
             
-            created_by
+            created_by,
+            
+            disable_calibration_notification
         )
 
         st.cache_data.clear()
