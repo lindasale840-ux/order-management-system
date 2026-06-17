@@ -385,6 +385,71 @@ def show_historical_import_page():
     preview_df = pd.DataFrame(
         preview_rows
     )
+    
+    new_count = len(
+        preview_df[
+            preview_df["action"] == "NEW"
+        ]
+    )
+
+    update_count = len(
+        preview_df[
+            preview_df["action"] == "UPDATE"
+        ]
+    )
+
+    total_revenue = (
+        pd.to_numeric(
+            df["total"],
+            errors="coerce"
+        )
+        .fillna(0)
+        .sum()
+    )
+
+    new_revenue = (
+        pd.to_numeric(
+            df.loc[
+                preview_df["action"] == "NEW",
+                "total"
+            ],
+            errors="coerce"
+        )
+        .fillna(0)
+        .sum()
+    )
+
+    update_revenue = (
+        pd.to_numeric(
+            df.loc[
+                preview_df["action"] == "UPDATE",
+                "total"
+            ],
+            errors="coerce"
+        )
+        .fillna(0)
+        .sum()
+    )
+    
+    col1, col2, col3 = st.columns(3)
+
+    with col1:
+        st.metric(
+            "NEW Orders",
+            new_count
+        )
+
+    with col2:
+        st.metric(
+            "UPDATE Orders",
+            update_count
+        )
+
+    with col3:
+        st.metric(
+            "Revenue Import",
+            f"{total_revenue:,.0f}"
+        )
 
     st.subheader(
         "📋 Import Preview"
