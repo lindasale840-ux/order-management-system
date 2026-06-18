@@ -2,6 +2,8 @@ import streamlit as st
 import pandas as pd
 from io import BytesIO
 
+import time  # Đảm bảo đã import time ở đầu file để dùng hàm sleep
+
 from openpyxl.styles import (
     Font,
     PatternFill,
@@ -298,511 +300,185 @@ def generate_template():
     return output.getvalue()
 
 
-def show_historical_import_page():
 
+
+def show_historical_import_page():
     require_admin()
 
-    st.title(
-        "📥 Historical Data Import"
-    )
+    st.title("📥 Historical Data Import")
 
     template_data = generate_template()
 
     st.download_button(
-
         label="📥 Download Import Template",
-
         data=template_data,
-
         file_name="ERP_Import_Template.xlsx",
-
-        mime=(
-            "application/vnd.openxmlformats-"
-            "officedocument.spreadsheetml.sheet"
-        )
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
 
-    uploaded_file = st.file_uploader(
-
-        "Upload Historical Excel",
-
-        type=["xlsx"]
-    )
+    uploaded_file = st.file_uploader("Upload Historical Excel", type=["xlsx"])
 
     if uploaded_file is None:
-
-        st.info(
-            "Please upload Excel file."
-        )
-
+        if "historical_df" in st.session_state:
+            del st.session_state["historical_df"]
+        st.info("Please upload Excel file.")
         return
 
-    df = pd.read_excel(
-        uploaded_file
-    )
+    # Lưu chặt vào Session State, không đọc lại file khi rerun
+    if "historical_df" not in st.session_state:
+        st.session_state["historical_df"] = pd.read_excel(uploaded_file)
+        st.success(f"{len(st.session_state['historical_df'])} rows loaded into memory!")
 
-    st.success(
-        f"{len(df)} rows loaded"
-    )
-
-    st.dataframe(
-        df,
-        use_container_width=True
-    )
+    df = st.session_state["historical_df"]
     
+    # Lấy danh sách user chuẩn từ DB để phục vụ hiển thị và validate
+    users_df = UserRepository.get_all_users()
+    valid_users = users_df["username"].tolist()
+    
+    # Khu vực xử lý Preview nhanh
     preview_rows = []
-
     for _, row in df.iterrows():
-
         order_number = row.get("order_number")
-
-        existing = OrderRepository.get_by_order_number(
-            order_number
-        )
-
-        action = (
-            "UPDATE"
-            if not existing.empty
-            else "NEW"
-        )
+        existing = OrderRepository.get_by_order_number(order_number)
+        action = "UPDATE" if not existing.empty else "NEW"
 
         preview_rows.append({
-
             "order_number": order_number,
-
-            "customer_name": row.get(
-                "customer_name"
-            ),
-
-            "sale_owner": row.get(
-                "sale_owner"
-            ),
-
-            "assistant": row.get(
-                "created_by"
-            ),
-
-            "disable_notification": row.get(
-                "disable_calibration_notification",
-                0
-            ),
-            
-            "disable_document_notification": row.get(
-                "disable_document_notification",
-                0
-            ),
-
+            "customer_name": row.get("customer_name"),
+            "sale_owner": row.get("sale_owner"),
+            "assistant": row.get("created_by"),
             "action": action
-
         })
 
-    preview_df = pd.DataFrame(
-        preview_rows
-    )
+    preview_df = pd.DataFrame(preview_rows)
     
-    new_count = len(
-        preview_df[
-            preview_df["action"] == "NEW"
-        ]
-    )
+    new_count = len(preview_df[preview_df["action"] == "NEW"])
+    update_count = len(preview_df[preview_df["action"] == "UPDATE"])
+    total_revenue = pd.to_numeric(df["total"], errors="coerce").fillna(0).sum()
 
-    update_count = len(
-        preview_df[
-            preview_df["action"] == "UPDATE"
-        ]
-    )
-
-    total_revenue = (
-        pd.to_numeric(
-            df["total"],
-            errors="coerce"
-        )
-        .fillna(0)
-        .sum()
-    )
-
-    new_revenue = (
-        pd.to_numeric(
-            df.loc[
-                preview_df["action"] == "NEW",
-                "total"
-            ],
-            errors="coerce"
-        )
-        .fillna(0)
-        .sum()
-    )
-
-    update_revenue = (
-        pd.to_numeric(
-            df.loc[
-                preview_df["action"] == "UPDATE",
-                "total"
-            ],
-            errors="coerce"
-        )
-        .fillna(0)
-        .sum()
-    )
-    
     col1, col2, col3 = st.columns(3)
+    col1.metric("NEW Orders", new_count)
+    col2.metric("UPDATE Orders", update_count)
+    col3.metric("Revenue Import", f"{total_revenue:,.0f}")
 
-    with col1:
-        st.metric(
-            "NEW Orders",
-            new_count
-        )
-
-    with col2:
-        st.metric(
-            "UPDATE Orders",
-            update_count
-        )
-
-    with col3:
-        st.metric(
-            "Revenue Import",
-            f"{total_revenue:,.0f}"
-        )
-
-    st.subheader(
-        "📋 Import Preview"
-    )
-
-    st.dataframe(
-        preview_df,
-        use_container_width=True
-    )
+    st.subheader("📋 Import Preview")
+    st.dataframe(preview_df, use_container_width=True)
     
-    validation_errors = []
-    
-    if st.button("🔍 Validate File"):
+    # Form đóng băng giao diện
+    with st.form(key="import_form_v2"):
+        st.markdown("### 🛠️ Import Actions")
+        validate_clicked = st.form_submit_button("🔍 Validate File")
+        confirm_import = st.checkbox("I confirm importing historical data")
+        import_clicked = st.form_submit_button("🚀 Import To ERP")
 
-        if df["customer_name"].isna().any():
-            validation_errors.append("Missing customer_name")
+    # XỬ LÝ VALIDATE
+    if validate_clicked:
+        validation_errors = []
+        if df["customer_name"].isna().any(): validation_errors.append("Missing customer_name")
+        if df["order_number"].isna().any(): validation_errors.append("Missing order_number")
+        if df["sale_owner"].isna().any(): validation_errors.append("Missing sale_owner")
 
-        if df["order_number"].isna().any():
-            validation_errors.append("Missing order_number")
-
-        if df["sale_owner"].isna().any():
-            validation_errors.append("Missing sale_owner")
-
-        if "created_by" in df.columns:
-
-            if df["created_by"].isna().any():
-                validation_errors.append("Missing created_by")
-
-        duplicates = df[
-            df["order_number"]
-            .duplicated(keep=False)
-        ]
-
+        duplicates = df[df["order_number"].duplicated(keep=False)]
         if not duplicates.empty:
+            validation_errors.append(f"Duplicate order_number found: {duplicates['order_number'].tolist()}")
 
+        # SỬA LỖI USERNAME: Chỉ ra đích danh dòng nào sai và gợi ý username đúng
+        invalid_created_by_rows = df[~df["created_by"].astype(str).isin(valid_users)]
+        if not invalid_created_by_rows.empty:
+            wrong_names = invalid_created_by_rows["created_by"].unique().tolist()
             validation_errors.append(
-                f"Duplicate order_number found: {duplicates['order_number'].tolist()}"
+                f"Invalid username found: {wrong_names}. "
+                f"Hệ thống yêu cầu điền chính xác 'username' hệ thống (thường không dấu), không phải tên hiển thị."
             )
-
-        invalid_commission = df[
-            df["commission_percent"] > 100
-        ]
-
-        if not invalid_commission.empty:
-
-            validation_errors.append(
-                "Commission percent > 100"
-            )
-            
-        invalid_payment_terms = df[
-            df["payment_terms"].fillna(0) > 365
-        ]
-
-        if not invalid_payment_terms.empty:
-
-            validation_errors.append(
-                "Payment Terms > 365"
-            )
-            
-        users_df = UserRepository.get_all_users()
-
-        valid_users = users_df["username"].tolist()
-
-        invalid_created_by = df[
-            ~df["created_by"].isin(valid_users)
-        ]
-
-        if "disable_calibration_notification" in df.columns:
-
-            invalid_disable = df[
-
-                ~df["disable_calibration_notification"]
-
-                .fillna(0)
-
-                .isin([0, 1])
-
-            ]
-
-            if not invalid_disable.empty:
-
-                validation_errors.append(
-
-                    "disable_calibration_notification must be 0 or 1"
-
-                )
-        
-        if not invalid_created_by.empty:
-
-            validation_errors.append(
-                "Invalid created_by username found"
-            )        
+            st.info(f"💡 Danh sách Username hợp lệ đang có trên ERP của bạn: `{valid_users}`")
 
         if validation_errors:
-
             st.error("Validation Failed")
-
             for err in validation_errors:
-
                 st.write("❌", err)
-
         else:
+            st.success("Validation Passed! Data hợp lệ 100%.")
 
-            st.success("Validation Passed")
-
-    confirm_import = st.checkbox(
-        "I confirm importing historical data"
-    )
-    
-    if st.button(
-        "🚀 Import To ERP"
-    ):
-
+    # XỬ LÝ IMPORT CHỐNG TIMEOUT
+    if import_clicked:
         if not confirm_import:
-
-            st.error(
-                "Please confirm first"
-            )
-
-            st.stop()
+            st.error("Please check 'I confirm...' inside the form first!")
+            return
 
         imported_orders = 0
         imported_payments = 0
+        
+        progress_bar = st.progress(0)
+        status_text = st.empty()
+        total_rows = len(df)
 
-        for _, row in df.iterrows():
+        for index, row in df.iterrows():
+            # TỐI ƯU UI: Cứ mỗi 5 dòng mới cập nhật giao diện một lần để tránh làm nghẽn luồng Streamlit
+            if index % 5 == 0 or (index + 1) == total_rows:
+                percent_complete = int((index + 1) / total_rows * 100)
+                progress_bar.progress(percent_complete)
+                status_text.text(f"🚀 Đang xử lý dòng {index + 1}/{total_rows}...")
 
-            # =========================
-            # DATE FIELDS
-            # =========================
-
-            measurement_date = None
-
-            if pd.notna(
-                row.get("measurement_date")
-            ):
-                measurement_date = (
-                    pd.to_datetime(
-                        row.get("measurement_date")
-                    )
-                    .date()
-                    .isoformat()
-                )
-
-            cert_status = None
-
-            if pd.notna(
-                row.get("cert_status")
-            ):
-                cert_status = (
-                    pd.to_datetime(
-                        row.get("cert_status")
-                    )
-                    .date()
-                    .isoformat()
-                )
-
-            invoice_date = None
-
-            if pd.notna(
-                row.get("invoice_date")
-            ):
-                invoice_date = (
-                    pd.to_datetime(
-                        row.get("invoice_date")
-                    )
-                    .date()
-                    .isoformat()
-                )
-
-            payment_status = None
-
-            if pd.notna(
-                row.get("payment_status")
-            ):
-                payment_status = str(
-                    row.get("payment_status")
-                )
-
-            # =========================
-            # ORDER
-            # =========================
-
-            created_by = (
-
-                row.get("created_by")
-
-                if pd.notna(
-                    row.get("created_by")
-                )
-
-                else st.session_state["username"]
-
-            )
+            # Ép kiểu dữ liệu ngày tháng chuẩn hóa
+            measurement_date = pd.to_datetime(row.get("measurement_date")).date().isoformat() if pd.notna(row.get("measurement_date")) else None
+            cert_status = pd.to_datetime(row.get("cert_status")).date().isoformat() if pd.notna(row.get("cert_status")) else None
+            invoice_date = pd.to_datetime(row.get("invoice_date")).date().isoformat() if pd.notna(row.get("invoice_date")) else None
+            payment_status = str(row.get("payment_status")) if pd.notna(row.get("payment_status")) else None
             
-            disable_notification = int(
-                row.get(
-                    "disable_calibration_notification",
-                    0
+            # Gán username mặc định nếu ô bị trống
+            created_by = row.get("created_by") if pd.notna(row.get("created_by")) else st.session_state["username"]
+            disable_notification = int(row.get("disable_calibration_notification", 0) or 0)
+            disable_document_notification = int(row.get("disable_document_notification", 0) or 0)
+
+            try:
+                # 1. Đồng bộ Order
+                DashboardService.sync_order(
+                    customer_name=row.get("customer_name"),
+                    order_number=row.get("order_number"),
+                    measurement_date=measurement_date,
+                    cert_status=cert_status,
+                    sale_owner=row.get("sale_owner"),
+                    created_by=created_by,
+                    disable_calibration_notification=disable_notification,
+                    disable_document_notification=disable_document_notification    
                 )
-                or 0
-            )
-            
-            disable_document_notification = int(
+                imported_orders += 1
 
-                row.get(
-
-                    "disable_document_notification",
-
-                    0
-
+                # 2. Đồng bộ Invoice
+                total = float(row.get("total", 0) or 0)
+                commission_percent = float(row.get("commission_percent", 0) or 0)
+                payment_terms = row.get("payment_terms", 0)
+                if pd.isna(payment_terms):
+                    payment_terms = 0
+                            
+                PaymentService.save_invoice(
+                    order_number=row.get("order_number"),
+                    invoice_date=invoice_date,
+                    invoice_group=row.get("invoice_group"),
+                    payment_terms=payment_terms,
+                    payment_status=payment_status,
+                    total=total,
+                    commission_percent=commission_percent,
+                    note=row.get("note"),
+                    invoice_created_by=created_by
                 )
-
-                or 0
-
-            )
-
-            DashboardService.sync_order(
-
-                customer_name=row.get(
-                    "customer_name"
-                ),
-
-                order_number=row.get(
-                    "order_number"
-                ),
-
-                measurement_date=measurement_date,
-
-                cert_status=cert_status,
-
-                sale_owner=row.get(
-                    "sale_owner"
-                ),
-
-                created_by=created_by,
+                imported_payments += 1
                 
-                disable_calibration_notification=
-                    disable_notification,
-                    
-                disable_document_notification=
-                    disable_document_notification    
+                # TỐI ƯU MẠNG: Nghỉ 0.01 giây để Database giải phóng bộ nhớ đệm kết nối, tránh đẩy traffic dồn dập
+                time.sleep(0.01)
 
-            )
+            except Exception as e:
+                st.error(f"❌ Lỗi tại dòng {index + 2} (Mã đơn: {row.get('order_number')}): {str(e)}")
+                continue
 
-            imported_orders += 1
-            
-            # =========================
-            # LOG
-            # =========================
-            
-           # LogRepository.add_log(
-
-            #    "HISTORICAL_IMPORT",
-
-             #   row.get(
-             #       "customer_name"
-              #  ),
-
-               # row.get(
-                #    "order_number"
-               # ),
-
-                #"Historical import"
-
-           # )
-
-            # =========================
-            # PAYMENT
-            # =========================
-            
-            total = float(
-                row.get("total", 0) or 0
-            )
-
-            commission_percent = float(
-                row.get(
-                    "commission_percent",
-                    0
-                ) or 0
-            )
-
-            commission_actual = (
-
-                total
-
-                *
-
-                commission_percent
-
-                / 100
-
-            )
-            
-            payment_terms = row.get("payment_terms", 0)
-
-            if pd.isna(payment_terms):
-                payment_terms = 0
-                        
-            PaymentService.save_invoice(
-
-                order_number=row.get(
-                    "order_number"
-                ),
-
-                invoice_date=invoice_date,
-
-                invoice_group=row.get(
-                    "invoice_group"
-                ),
-
-                payment_terms=payment_terms,
-
-                payment_status=payment_status,
-
-                total=total,
-
-                commission_percent=commission_percent,
-
-                note=row.get(
-                    "note"
-                ),
-
-                invoice_created_by=created_by
-
-            )
-
-            imported_payments += 1
-
+        # Hoàn tất dọn dẹp
         st.cache_data.clear()
+        status_text.empty()
+        progress_bar.empty()
         
-        st.success(
-
-            f"""
-            Imported:
-
-            Orders: {imported_orders}
-
-            Payments: {imported_payments}
-            """
-        )
-        
+        if "historical_df" in st.session_state:
+            del st.session_state["historical_df"]
+            
+        st.success(f"🎉 Xuất sắc! Đã nạp thành công một mạch {imported_orders}/{total_rows} dòng vào ERP.")
+        time.sleep(2)
         st.rerun()
