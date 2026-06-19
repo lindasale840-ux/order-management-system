@@ -32,18 +32,28 @@ def export_button(df, filename):
 def show_notification_page():
     st.title("🔔 Notification Center")
 
-    customer_df = OrderRepository.get_customers()
-    customer_options = ["ALL"] + customer_df["customer_name"].tolist()
-    selected_customer = st.selectbox("Filter Customer", customer_options)
+    # ========================================================
+    # ĐÃ NÂNG CẤP: Thanh tìm kiếm tự do toàn diện (Global Search Text Input)
+    # ========================================================
+    search_keyword = st.text_input("🔍 Fast Query Search Client Account / Target Order Sequence").strip()
 
     df = FinanceService.build_finance_dataframe()
 
-    if selected_customer != "ALL":
-        df = df[df["customer_name"] == selected_customer]
+    # Nếu người dùng có nhập từ khóa, tiến hành lọc trên toàn bộ các cột liên quan
+    if search_keyword:
+        # Tạo điều kiện lọc không phân biệt chữ hoa chữ thường (case-insensitive)
+        customer_match = df["customer_name"].astype(str).str.contains(search_keyword, case=False, na=False)
+        
+        # Phòng trường hợp df gốc có cột order_number để tìm kiếm theo mã đơn
+        if "order_number" in df.columns:
+            order_match = df["order_number"].astype(str).str.contains(search_keyword, case=False, na=False)
+            df = df[customer_match | order_match]
+        else:
+            df = df[customer_match]
 
     missing_cert_df = df[df["cert_workflow_status"] == "Missing Cert"]
 
-    # ĐÃ CẬP NHẬT: Thêm điều kiện loại trừ các đơn hàng có disable_payment_notification == 1
+    # Thêm điều kiện loại trừ các đơn hàng có disable_payment_notification == 1
     payment_overdue_df = df[
         (df["payment_overdue"] == "Overdue")
         & (df["disable_payment_notification"] != 1)
@@ -115,6 +125,12 @@ def show_notification_page():
                 ~pending_return_df["order_number"].isin(ignore_orders)
             ]
 
+            # Đồng bộ bộ lọc tìm kiếm text cho cả dữ liệu phụ Pending Return (Lọc theo mã đơn hoặc tên khách hàng)
+            if search_keyword:
+                pending_customer_match = pending_return_df["customer_name"].astype(str).str.contains(search_keyword, case=False, na=False)
+                pending_order_match = pending_return_df["order_number"].astype(str).str.contains(search_keyword, case=False, na=False)
+                pending_return_df = pending_return_df[pending_customer_match | pending_order_match]
+
     # =========================
     # KPI SUMMARY
     # =========================
@@ -153,7 +169,7 @@ def show_notification_page():
     with tab1:
         st.metric("Missing Certificate", len(missing_cert_df))
         if missing_cert_df.empty:
-            st.success("No missing certificate")
+            st.success("No missing certificate matching parameters")
         else:
             render_aggrid(
                 missing_cert_df,
@@ -169,7 +185,7 @@ def show_notification_page():
     with tab2:
         st.metric("Payment Overdue", len(payment_overdue_df))
         if payment_overdue_df.empty:
-            st.success("No overdue payment")
+            st.success("No overdue payment matching parameters")
         else:
             render_aggrid(
                 payment_overdue_df,
@@ -185,7 +201,7 @@ def show_notification_page():
     with tab3:
         st.metric("Calibration Due Soon", len(due_soon_df))
         if due_soon_df.empty:
-            st.success("No due soon")
+            st.success("No due soon matching parameters")
         else:
             render_aggrid(
                 due_soon_df,
@@ -201,7 +217,7 @@ def show_notification_page():
     with tab4:
         st.metric("Missing Invoice", len(missing_invoice_df))
         if missing_invoice_df.empty:
-            st.success("No missing invoice")
+            st.success("No missing invoice matching parameters")
         else:
             render_aggrid(
                 missing_invoice_df,
@@ -217,7 +233,7 @@ def show_notification_page():
     with tab5:
         st.metric("Missing Document Sending", len(missing_document_df))
         if missing_document_df.empty:
-            st.success("No missing document sending")
+            st.success("No missing document sending matching parameters")
         else:
             render_aggrid(
                 missing_document_df,
@@ -233,7 +249,7 @@ def show_notification_page():
     with tab6:
         st.metric("Pending Return", len(pending_return_df))
         if pending_return_df.empty:
-            st.success("No pending return")
+            st.success("No pending return matching parameters")
         else:
             display_df = pending_return_df[["customer_name", "order_number", "sent_date", "note"]].copy()
             render_aggrid(
@@ -250,7 +266,7 @@ def show_notification_page():
     with tab7:
         st.metric("Calibration Overdue", len(calibration_overdue_df))
         if calibration_overdue_df.empty:
-            st.success("No overdue calibration")
+            st.success("No overdue calibration matching parameters")
         else:
             render_aggrid(
                 calibration_overdue_df,
