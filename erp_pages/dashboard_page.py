@@ -42,35 +42,27 @@ def show_dashboard_page():
             if order_number.strip():
 
                 existing_df = (
-
                     OrderRepository
                     .get_by_order_number(
                         order_number.strip()
                     )
-
                 )
 
                 if not existing_df.empty:
 
                     existing_order = (
-
                         existing_df.iloc[0]
                         .to_dict()
                     )
 
             customer_name = st.text_input(
-
                 "Customer Name",
-
                 value=str(
-
                     existing_order.get(
                         "customer_name",
                         ""
                     ) or ""
-
                 )
-
             )
 
         with col2:
@@ -82,23 +74,16 @@ def show_dashboard_page():
             ) is not None:
 
                 measurement_value = (
-
                     pd.to_datetime(
-
                         existing_order[
                             "measurement_date"
                         ]
-
                     ).date()
-
                 )
 
             measurement_date = st.date_input(
-
                 "Measurement Date",
-
                 value=measurement_value
-
             )
 
             cert_saved = existing_order.get(
@@ -110,11 +95,8 @@ def show_dashboard_page():
             )
 
             no_cert = st.checkbox(
-
                 "No Cert Yet",
-
                 value=default_no_cert
-
             )
 
             if no_cert:
@@ -132,86 +114,67 @@ def show_dashboard_page():
                 if pd.notna(cert_saved):
 
                     cert_value = (
-
                         pd.to_datetime(
                             cert_saved
                         ).date()
-
                     )
 
                 cert_status = st.date_input(
-
                     "Cert Status",
-
                     value=cert_value
-
                 )
                 
             disable_calibration_notification = st.checkbox(
-
                 "Disable Calibration Notification",
-
                 value=bool(
-
                     existing_order.get(
-
                         "disable_calibration_notification",
-
                         0
-
                     )
-
                 )
-
             )   
             
             disable_document_notification = st.checkbox(
-
                 "Disable Document Notification",
-
                 value=bool(
-
                     existing_order.get(
-
                         "disable_document_notification",
-
                         0
-
                     )
-
                 )
-
             ) 
+
+            # Thêm nút điều khiển bật/tắt thông báo nợ quá hạn khi nhập tay
+            disable_payment_notification = st.checkbox(
+                "Disable Payment Notification",
+                value=bool(
+                    existing_order.get(
+                        "disable_payment_notification",
+                        0
+                    )
+                )
+            )
 
         if st.button("Sync Order"):
 
             if not customer_name:
-
                 st.error("Customer required")
                 st.stop()
 
             if not order_number:
-
                 st.error("Order required")
                 st.stop()
 
             DashboardService.sync_order(
-
                 customer_name,
-
                 order_number,
-
                 measurement_date,
-
                 cert_status,
-
                 st.session_state["sale_owner"],
-                
                 st.session_state["username"],
-                
                 disable_calibration_notification,
-                
-                disable_document_notification
+                disable_document_notification,
+                disable_payment_notification # Truyền giá trị vào service
             )
 
             st.success("Order synced")
@@ -242,24 +205,25 @@ def show_dashboard_page():
                 for _, row in excel_df.iterrows():
 
                     DashboardService.sync_order(
-
                         row["customer_name"],
-
                         row["order_number"],
-
                         row["measurement_date"],
-
                         row.get(
                             "cert_status",
                             None
                         ),
-
                         st.session_state["sale_owner"],
-                        
                         st.session_state["username"],
-                        
                         row.get(
                             "disable_calibration_notification",
+                            0
+                        ),
+                        row.get(
+                            "disable_document_notification",
+                            0
+                        ),
+                        row.get(
+                            "disable_payment_notification", # Đọc và truyền cấu hình từ tệp Excel tải lên
                             0
                         )
                     )
@@ -274,21 +238,14 @@ def show_dashboard_page():
     df = OrderRepository.get_all_orders()
     
     df["measurement_date"] = pd.to_datetime(
-
         df["measurement_date"],
-
         errors="coerce"
-
     )
 
     df["next_calibration_date"] = (
-
         df["measurement_date"]
-
         +
-
         pd.DateOffset(months=11)
-
     )
 
     df = filter_by_sale_owner(df)
@@ -315,13 +272,9 @@ def show_dashboard_page():
         )
 
         customer_match = (
-
             df["customer_name"]
-
             .astype(str)
-
             .str.lower()
-
             .str.contains(
                 search_text,
                 na=False
@@ -329,13 +282,9 @@ def show_dashboard_page():
         )
 
         order_match = (
-
             df["order_number"]
-
             .astype(str)
-
             .str.lower()
-
             .str.contains(
                 search_text,
                 na=False
@@ -343,13 +292,9 @@ def show_dashboard_page():
         )
 
         invoice_match = (
-
             df["invoice_group"]
-
             .astype(str)
-
             .str.lower()
-
             .str.contains(
                 search_text,
                 na=False
@@ -357,15 +302,10 @@ def show_dashboard_page():
         )
 
         df = df[
-
             customer_match
-
             |
-
             order_match
-
             |
-
             invoice_match
         ]
 
@@ -374,22 +314,15 @@ def show_dashboard_page():
     )
 
     page_size = st.selectbox(
-
         "Rows per page",
-
         [5, 10, 20, 50],
-
         index=0,
-
         key="dashboard_page_size"
     )
 
     render_aggrid(
-
         df,
-
         height=500,
-
         page_size=page_size
     )
 
@@ -400,60 +333,42 @@ def show_dashboard_page():
     )
 
     selected_orders = st.multiselect(
-
     "Select Orders",
-
     options=df["order_number"].tolist()
-
     )
 
     confirm_bulk_delete = st.checkbox(
-
     "I confirm moving selected orders to trash"
-
     )
 
     if st.button(
-
     "🗑 Move Selected To Trash"
-
     ):
 
         if not selected_orders:
-
             st.error(
-
                 "Please select at least one order"
-
             )
 
         elif not confirm_bulk_delete:
-
             st.error(
-
                 "Please confirm first"
-
             )
 
         else:
-
             st.write(selected_orders)
 
             DashboardService.bulk_move_to_trash(
-
                 selected_orders,
-
                 st.session_state["username"]
-
             )
 
             st.success(
-
                 f"Moved {len(selected_orders)} orders to trash"
-
             )
 
             st.rerun()
+            
     st.divider()
 
     st.subheader(
@@ -468,48 +383,32 @@ def show_dashboard_page():
     if order_options:
 
         selected_delete_order = st.selectbox(
-
             "Select Order To Delete",
-
             order_options,
-
             key="delete_order_select"
         )
 
         confirm_delete = st.checkbox(
-
             "I confirm move this order to trash"
-
         )
 
         if st.button(
-
             "🗑 Move To Trash"
-
         ):
 
             if not confirm_delete:
-
                 st.error(
-
                     "Please confirm first"
-
                 )
 
             else:
-
                 DashboardService.move_to_trash(
-
                     selected_delete_order,
-
                     st.session_state["username"]
-
                 )
 
                 st.success(
-
                     f"Moved {selected_delete_order} to trash"
-
                 )
 
                 st.rerun()
