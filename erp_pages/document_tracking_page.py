@@ -91,17 +91,34 @@ def show_document_tracking_page():
         st.success("🎉 Tracking baseline successfully updated!")
         st.rerun()
         
-    # --- TRACKING HISTORY ---
+    # --- BẢNG 1: TRACKING HISTORY (Phân trang Python thuần) ---
     st.divider()
     st.subheader("📜 Current Order Selected Tracking History")
 
     if not tracking_history_df.empty:
         history_display = tracking_history_df[["id", "sent_date", "received_date", "note"]].copy()
-        # Đã loại bỏ selectbox hàng thừa, cấu hình gọn gàng trực tiếp
-        render_aggrid(history_display, height=220, page_size=5, key="tracking_history_grid")
+        
+        # Thiết lập bộ chọn trang click chuột cho bảng lịch sử lẻ
+        h_rows_per_page = 5
+        h_total_rows = len(history_display)
+        h_total_pages = max(1, (h_total_rows + h_rows_per_page - 1) // h_rows_per_page)
+        
+        col_h1, col_h2 = st.columns([3, 7])
+        with col_h1:
+            h_selected_page = st.selectbox(
+                "📄 Page (History)", 
+                options=list(range(1, h_total_pages + 1)), 
+                index=0, 
+                key="track_hist_pure_page_select"
+            )
+        h_start = (h_selected_page - 1) * h_rows_per_page
+        h_sliced_df = history_display.iloc[h_start : h_start + h_rows_per_page]
+        
+        render_aggrid(h_sliced_df, height=220, page_size=h_rows_per_page, pagination=False, key="tracking_history_grid")
     else:
         st.info("No localized operational tracking history available for this item.")
     
+    # --- BẢNG 2: GLOBAL DATABASE MASTER LEDGER (Phân trang Python thuần) ---
     st.divider()
     st.subheader("📊 Global Document Tracking Ledger Master")
 
@@ -117,8 +134,28 @@ def show_document_tracking_page():
                 tracking_df.astype(str).apply(lambda col: col.str.lower()).apply(lambda col: col.str.contains(keyword, na=False)).any(axis=1)
             ]
         
-        # Bảng AgGrid Tổng quản lý gọn 10 dòng
-        render_aggrid(tracking_df, height=400, page_size=10, key="global_doc_tracking_grid")
+        # Thiết lập bộ chọn trang click chuột nâng cao có chọn Rows per page cho bảng chính
+        col_g1, col_g2, col_g3 = st.columns([2, 2, 6])
+        with col_g1:
+            g_rows_per_page = st.selectbox(
+                "Rows per page (Master)",
+                options=[5, 10, 20, 50, 100],
+                index=1,
+                key="global_track_pure_rows_per_page"
+            )
+        g_total_rows = len(tracking_df)
+        g_total_pages = max(1, (g_total_rows + g_rows_per_page - 1) // g_rows_per_page)
+        with col_g2:
+            g_selected_page = st.selectbox(
+                "Go to page (Master)",
+                options=list(range(1, g_total_pages + 1)),
+                index=0,
+                key="global_track_pure_page_select"
+            )
+        g_start = (g_selected_page - 1) * g_rows_per_page
+        g_sliced_df = tracking_df.iloc[g_start : g_start + g_rows_per_page]
+
+        render_aggrid(g_sliced_df, height=400, page_size=g_rows_per_page, pagination=False, key="global_doc_tracking_grid")
 
         excel_data = dataframe_to_excel({"Document Tracking": tracking_df})
         st.download_button(
@@ -141,6 +178,7 @@ def show_document_tracking_page():
             st.success("Entry safely extracted and dropped from database branch.")
             st.rerun()
         
+    # --- PHẦN KHỐI NHẬP LIỆU AD-HOC ---
     st.divider()
     st.subheader("📦 Miscellaneous Ad-hoc Document Tracking")
 
@@ -177,12 +215,33 @@ def show_document_tracking_page():
         st.success("🎉 Miscellaneous ad-hoc tracking entry recorded.")
         st.rerun()  
         
+    # --- BẢNG 3: MISCELLANEOUS DOCUMENT HISTORY (Phân trang Python thuần) ---
     st.divider()
     st.subheader("📦 Miscellaneous Document Tracking History Database")   
     
     other_tracking_df = OtherDocumentTrackingRepository.get_all()
 
     if not other_tracking_df.empty:
-        render_aggrid(other_tracking_df, height=250, page_size=10, key="other_tracking_grid")
+        col_o1, col_o2, col_o3 = st.columns([2, 2, 6])
+        with col_o1:
+            o_rows_per_page = st.selectbox(
+                "Rows per page (Ad-hoc)",
+                options=[5, 10, 20, 50, 100],
+                index=1,
+                key="other_track_pure_rows_per_page"
+            )
+        o_total_rows = len(other_tracking_df)
+        o_total_pages = max(1, (o_total_rows + o_rows_per_page - 1) // o_rows_per_page)
+        with col_o2:
+            o_selected_page = st.selectbox(
+                "Go to page (Ad-hoc)",
+                options=list(range(1, o_total_pages + 1)),
+                index=0,
+                key="other_track_pure_page_select"
+            )
+        o_start = (o_selected_page - 1) * o_rows_per_page
+        o_sliced_df = other_tracking_df.iloc[o_start : o_start + o_rows_per_page]
+
+        render_aggrid(o_sliced_df, height=250, page_size=o_rows_per_page, pagination=False, key="other_tracking_grid")
     else:
         st.info("No external miscellaneous ad-hoc history logs located.")

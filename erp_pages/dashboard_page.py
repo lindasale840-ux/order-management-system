@@ -4,7 +4,7 @@ from services.dashboard_service import DashboardService
 from repositories.order_repository import OrderRepository
 from utils.data_permission import filter_by_sale_owner
 from utils.auth_guard import require_editor
-from components.aggrid_table import render_aggrid  # Thay thế bộ phân trang cũ bằng AgGrid thông minh
+from components.aggrid_table import render_aggrid
 
 def show_dashboard_page():
     require_editor()
@@ -115,7 +115,7 @@ def show_dashboard_page():
 
     st.divider()
 
-    # Data Processing & Filtration
+    # --- DATA PROCESSING & FILTRATION ---
     df = OrderRepository.get_all_orders()
     df["measurement_date"] = pd.to_datetime(df["measurement_date"], errors="coerce")
     df["next_calibration_date"] = df["measurement_date"] + pd.DateOffset(months=11)
@@ -123,7 +123,7 @@ def show_dashboard_page():
 
     st.metric("Total Operational Orders", len(df))
 
-    # Search Bar Section
+    # --- SEARCH BAR SECTION ---
     search_text = st.text_input("🔍 Filter Customer / Order / Invoice Group Global Data")
     if search_text:
         search_text = search_text.strip().lower()
@@ -132,19 +132,53 @@ def show_dashboard_page():
         invoice_match = df["invoice_group"].astype(str).str.lower().str.contains(search_text, na=False)
         df = df[customer_match | order_match | invoice_match]
 
-    # Bảng hiển thị thông minh: Loại bỏ hoàn toàn selectbox Rows per page cũ kĩ!
-    render_aggrid(df, height=450, page_size=10, key="dashboard_grid_main")
+    # --- ĐÃ SỬA: BỘ ĐIỀU HƯỚNG PHÂN TRANG THUỒN PYTHON CAO CẤP ---
+    st.subheader("📋 Data Viewer")
+    
+    # Tạo 2 ô chọn song song: Một ô chọn số dòng/trang, một ô chọn số trang
+    col_p1, col_p2, col_p3 = st.columns([2, 2, 6])
+    
+    with col_p1:
+        rows_per_page = st.selectbox(
+            "Rows per page",
+            options=[5, 10, 20, 50, 100],
+            index=1, # Mặc định hiển thị 10 dòng
+            key="dashboard_pure_rows_per_page"
+        )
+        
+    total_rows = len(df)
+    # Tính toán động tổng số trang dựa trên số dòng được chọn (ví dụ chọn 20 dòng thì tổng số trang tự giảm xuống)
+    total_pages = max(1, (total_rows + rows_per_page - 1) // rows_per_page)
+    
+    with col_p2:
+        selected_page = st.selectbox(
+            "Go to page", 
+            options=list(range(1, total_pages + 1)), 
+            index=0, 
+            key="dashboard_pure_click_page_select"
+        )
+    
+    # Cắt chính xác dữ liệu theo cấu hình đã click chọn
+    start_idx = (selected_page - 1) * rows_per_page
+    end_idx = start_idx + rows_per_page
+    sliced_df = df.iloc[start_idx:end_idx]
+    
+    # Hiển thị bảng AgGrid tĩnh cố định dữ liệu đã cắt, đồng thời ẩn thanh phân trang cũ thừa thãi đi
+    # (Nếu hàm render_aggrid của anh có nhận custom_options, anh có thể truyền suppressPaginationPanel=True vào gridOptions bên trong component đó)
+    render_aggrid(sliced_df, height=450, page_size=rows_per_page, pagination=False, key="dashboard_grid_pure_sliced")
 
     st.divider()
 
+    order_options_list = df["order_number"].tolist()
+
     # --- SECTION MÔ-ĐUN XÓA HÀNG LOẠT ---
     st.subheader("🗑️ Bulk Move To Trash Actions")
-    selected_orders = st.multiselect("Select Orders for Disposal Queue", options=df["order_number"].tolist())
-    confirm_bulk_delete = st.checkbox("I verify moving the chosen logs to system trash bin")
+    selected_orders = st.multiselect("Select Orders for Disposal Queue", options=order_options_list, key="bulk_delete_orders_select")
+    confirm_bulk_delete = st.checkbox("I verify moving the chosen logs to system trash bin", key="bulk_delete_confirm_chk")
 
     is_bulk_delete_disabled = (not selected_orders) or (not confirm_bulk_delete)
 
-    if st.button("🗑️ Move Selected Rows To Trash", disabled=is_bulk_delete_disabled):
+    if st.button("🗑️ Move Selected Rows To Trash", disabled=is_bulk_delete_disabled, use_container_width=True):
         DashboardService.bulk_move_to_trash(selected_orders, st.session_state["username"])
         st.success(f"Successfully moved {len(selected_orders)} items to system trash.")
         st.rerun()
@@ -153,15 +187,14 @@ def show_dashboard_page():
 
     # --- SECTION XÓA ĐƠN LẺ ---
     st.subheader("🗑️ Delete Single Order Entry")
-    order_options = df["order_number"].tolist()
 
-    if order_options:
-        selected_delete_order = st.selectbox("Select Target Order Number to Erase", order_options, key="delete_order_select")
-        confirm_delete = st.checkbox("Confirm move this exact entry to trash storage")
+    if order_options_list:
+        selected_delete_order = st.selectbox("Select Target Order Number to Erase", order_options_list, key="delete_order_single_select")
+        confirm_delete = st.checkbox("Confirm move this exact entry to trash storage", key="single_delete_confirm_chk")
 
         is_single_delete_disabled = not confirm_delete
 
-        if st.button("🗑️ Proceed Single Trash Action", disabled=is_single_delete_disabled):
+        if st.button("🗑️ Proceed Single Trash Action", disabled=is_single_delete_disabled, use_container_width=True):
             DashboardService.move_to_trash(selected_delete_order, st.session_state["username"])
             st.success(f"Item {selected_delete_order} shifted into trash partition.")
             st.rerun()

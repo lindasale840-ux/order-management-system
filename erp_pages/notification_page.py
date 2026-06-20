@@ -1,23 +1,12 @@
 import streamlit as st
 import pandas as pd
 
-from services.finance_service import (
-    FinanceService
-)
-from repositories.order_repository import (
-    OrderRepository
-)
-from repositories.document_tracking_repository import (
-    DocumentTrackingRepository
-)
-from components.aggrid_table import (
-    render_aggrid
-)
-from utils.excel_export import (
-    dataframe_to_excel
-)
+from services.finance_service import FinanceService
+from repositories.order_repository import OrderRepository
+from repositories.document_tracking_repository import DocumentTrackingRepository
+from components.aggrid_table import render_aggrid
+from utils.excel_export import dataframe_to_excel
 from config.app_config import DOCUMENT_WARNING_DAYS
-
 
 def export_button(df, filename):
     excel_data = dataframe_to_excel({"Data": df})
@@ -28,23 +17,18 @@ def export_button(df, filename):
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
 
-
 def show_notification_page():
     st.title("🔔 Notification Center")
 
     # ========================================================
-    # ĐÃ NÂNG CẤP: Thanh tìm kiếm tự do toàn diện (Global Search Text Input)
+    # GLOBAL SEARCH FILTER
     # ========================================================
     search_keyword = st.text_input("🔍 Fast Query Search Client Account / Target Order Sequence").strip()
 
     df = FinanceService.build_finance_dataframe()
 
-    # Nếu người dùng có nhập từ khóa, tiến hành lọc trên toàn bộ các cột liên quan
     if search_keyword:
-        # Tạo điều kiện lọc không phân biệt chữ hoa chữ thường (case-insensitive)
         customer_match = df["customer_name"].astype(str).str.contains(search_keyword, case=False, na=False)
-        
-        # Phòng trường hợp df gốc có cột order_number để tìm kiếm theo mã đơn
         if "order_number" in df.columns:
             order_match = df["order_number"].astype(str).str.contains(search_keyword, case=False, na=False)
             df = df[customer_match | order_match]
@@ -53,7 +37,6 @@ def show_notification_page():
 
     missing_cert_df = df[df["cert_workflow_status"] == "Missing Cert"]
 
-    # Thêm điều kiện loại trừ các đơn hàng có disable_payment_notification == 1
     payment_overdue_df = df[
         (df["payment_overdue"] == "Overdue")
         & (df["disable_payment_notification"] != 1)
@@ -74,7 +57,7 @@ def show_notification_page():
     today = pd.Timestamp.today()
 
     # =========================
-    # MISSING DOCUMENT SENDING
+    # MISSING DOCUMENT SENDING LOGIC
     # =========================
     tracking_df = DocumentTrackingRepository.get_latest_tracking()
     sent_orders = set()
@@ -125,7 +108,6 @@ def show_notification_page():
                 ~pending_return_df["order_number"].isin(ignore_orders)
             ]
 
-            # Đồng bộ bộ lọc tìm kiếm text cho cả dữ liệu phụ Pending Return (Lọc theo mã đơn hoặc tên khách hàng)
             if search_keyword:
                 pending_customer_match = pending_return_df["customer_name"].astype(str).str.contains(search_keyword, case=False, na=False)
                 pending_order_match = pending_return_df["order_number"].astype(str).str.contains(search_keyword, case=False, na=False)
@@ -153,6 +135,42 @@ def show_notification_page():
 
     st.divider()
 
+    # ========================================================
+    # ĐỘT PHÁ: BỘ ĐIỀU KHIỂN PHÂN TRANG DÙNG CHUNG CHO TẤT CẢ CÁC TABS
+    # ========================================================
+    st.subheader("📋 Filtered Alert Logs Controller")
+    col_p1, col_p2, col_p3 = st.columns([2, 2, 6])
+    with col_p1:
+        rows_per_page = st.selectbox(
+            "Rows per page",
+            options=[5, 10, 20, 50, 100],
+            index=1,
+            key="notify_global_rows_per_page"
+        )
+    
+    # Tìm tập dữ liệu lớn nhất hiện tại trong 7 tabs để tính số trang an toàn nhất
+    max_current_rows = max(
+        len(missing_cert_df), len(payment_overdue_df), len(due_soon_df),
+        len(missing_invoice_df), len(missing_document_df), len(pending_return_df),
+        len(calibration_overdue_df), 1
+    )
+    total_pages = max(1, (max_current_rows + rows_per_page - 1) // rows_per_page)
+    
+    with col_p2:
+        selected_page = st.selectbox(
+            "Go to page",
+            options=list(range(1, total_pages + 1)),
+            index=0,
+            key="notify_global_page_select"
+        )
+        
+    # Tính chỉ số Index cắt lát dữ liệu
+    start_idx = (selected_page - 1) * rows_per_page
+    end_idx = start_idx + rows_per_page
+
+    # ========================================================
+    # RENDER TABS SYSTEM
+    # ========================================================
     tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
         f"📄 Missing Cert ({len(missing_cert_df)})",
         f"💰 Payment Overdue ({len(payment_overdue_df)})",
@@ -163,115 +181,73 @@ def show_notification_page():
         f"⛔ Calibration Overdue ({len(calibration_overdue_df)})"
     ])
 
-    # =========================
-    # TAB 1
-    # =========================
+    # --- TAB 1 ---
     with tab1:
         st.metric("Missing Certificate", len(missing_cert_df))
         if missing_cert_df.empty:
             st.success("No missing certificate matching parameters")
         else:
-            render_aggrid(
-                missing_cert_df,
-                height=500,
-                page_size=10,
-                key="missing_cert_grid"
-            )
+            sliced_cert_df = missing_cert_df.iloc[start_idx:end_idx]
+            render_aggrid(sliced_cert_df, height=500, page_size=rows_per_page, pagination=False, key="missing_cert_grid")
             export_button(missing_cert_df, "missing_certificate.xlsx")
 
-    # =========================
-    # TAB 2
-    # =========================
+    # --- TAB 2 ---
     with tab2:
         st.metric("Payment Overdue", len(payment_overdue_df))
         if payment_overdue_df.empty:
             st.success("No overdue payment matching parameters")
         else:
-            render_aggrid(
-                payment_overdue_df,
-                height=500,
-                page_size=10,
-                key="payment_overdue_grid"
-            )
+            sliced_payment_df = payment_overdue_df.iloc[start_idx:end_idx]
+            render_aggrid(sliced_payment_df, height=500, page_size=rows_per_page, pagination=False, key="payment_overdue_grid")
             export_button(payment_overdue_df, "payment_overdue.xlsx")
 
-    # =========================
-    # TAB 3
-    # =========================
+    # --- TAB 3 ---
     with tab3:
         st.metric("Calibration Due Soon", len(due_soon_df))
         if due_soon_df.empty:
             st.success("No due soon matching parameters")
         else:
-            render_aggrid(
-                due_soon_df,
-                height=500,
-                page_size=10,
-                key="due_soon_grid"
-            )
+            sliced_due_df = due_soon_df.iloc[start_idx:end_idx]
+            render_aggrid(sliced_due_df, height=500, page_size=rows_per_page, pagination=False, key="due_soon_grid")
             export_button(due_soon_df, "calibration_due_soon.xlsx")
 
-    # =========================
-    # TAB 4
-    # =========================
+    # --- TAB 4 ---
     with tab4:
         st.metric("Missing Invoice", len(missing_invoice_df))
         if missing_invoice_df.empty:
             st.success("No missing invoice matching parameters")
         else:
-            render_aggrid(
-                missing_invoice_df,
-                height=500,
-                page_size=10,
-                key="missing_invoice_grid"
-            )
+            sliced_invoice_df = missing_invoice_df.iloc[start_idx:end_idx]
+            render_aggrid(sliced_invoice_df, height=500, page_size=rows_per_page, pagination=False, key="missing_invoice_grid")
             export_button(missing_invoice_df, "missing_invoice.xlsx")
 
-    # =========================
-    # TAB 5
-    # =========================
+    # --- TAB 5 ---
     with tab5:
         st.metric("Missing Document Sending", len(missing_document_df))
         if missing_document_df.empty:
             st.success("No missing document sending matching parameters")
         else:
-            render_aggrid(
-                missing_document_df,
-                height=500,
-                page_size=10,
-                key="missing_document_grid"
-            )
+            sliced_doc_df = missing_document_df.iloc[start_idx:end_idx]
+            render_aggrid(sliced_doc_df, height=500, page_size=rows_per_page, pagination=False, key="missing_document_grid")
             export_button(missing_document_df, "missing_document_sending.xlsx")
 
-    # =========================
-    # TAB 6
-    # =========================
+    # --- TAB 6 ---
     with tab6:
         st.metric("Pending Return", len(pending_return_df))
         if pending_return_df.empty:
             st.success("No pending return matching parameters")
         else:
             display_df = pending_return_df[["customer_name", "order_number", "sent_date", "note"]].copy()
-            render_aggrid(
-                display_df,
-                height=500,
-                page_size=10,
-                key="pending_return_grid"
-            )
+            sliced_return_df = display_df.iloc[start_idx:end_idx]
+            render_aggrid(sliced_return_df, height=500, page_size=rows_per_page, pagination=False, key="pending_return_grid")
             export_button(display_df, "pending_return.xlsx")
             
-    # =========================
-    # TAB 7
-    # =========================
+    # --- TAB 7 ---
     with tab7:
         st.metric("Calibration Overdue", len(calibration_overdue_df))
         if calibration_overdue_df.empty:
             st.success("No overdue calibration matching parameters")
         else:
-            render_aggrid(
-                calibration_overdue_df,
-                height=500,
-                page_size=10,
-                key="calibration_overdue_grid"
-            )
+            sliced_calib_df = calibration_overdue_df.iloc[start_idx:end_idx]
+            render_aggrid(sliced_calib_df, height=500, page_size=rows_per_page, pagination=False, key="calibration_overdue_grid")
             export_button(calibration_overdue_df, "calibration_overdue.xlsx")

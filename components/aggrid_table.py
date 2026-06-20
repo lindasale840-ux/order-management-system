@@ -100,6 +100,7 @@ def render_aggrid(
     # ========================================================
     # CHỨC NĂNG PHÂN TRANG CHUYÊN NGHIỆP (NHẬP SỐ ĐỂ NHẢY TRANG)
     # ========================================================
+    # ĐÃ SỬA: Chỉ hiển thị ô nhập số nếu trang đó thực sự bật phân trang cũ (pagination=True)
     if pagination and not dataframe.empty:
         total_rows = len(dataframe)
         max_pages = math.ceil(total_rows / page_size)
@@ -107,7 +108,6 @@ def render_aggrid(
         # Tạo giao diện ô nhập số gọn gàng ngay trên bảng dữ liệu
         col1, col2 = st.columns([2, 8])
         with col1:
-            # Tạo một khóa duy nhất cho ô nhập số để không bị trùng lặp giữa các trang
             target_page = st.number_input(
                 "Đến trang:", 
                 min_value=1, 
@@ -125,6 +125,9 @@ def render_aggrid(
                 params.api.paginationGoToPage({target_page - 1});
             }}
         """)
+    else:
+        # Nếu trang mới dùng Python Slicing (pagination=False), ta ẩn luôn thanh panel phân trang cũ của AgGrid đi cho sạch
+        grid_options["suppressPaginationPanel"] = True
 
     # Ép bảng AgGrid sử dụng theme thiết kế Alpine hiện đại
     return AgGrid(
