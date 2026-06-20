@@ -24,6 +24,7 @@ from services.equipment_tracking_notification_service import EquipmentTrackingNo
 from erp_pages.historical_import_page import show_historical_import_page
 from erp_pages.trash_bin_page import show_trash_bin_page
 from erp_pages.ownership_transfer_page import show_ownership_transfer_page
+from erp_pages.document_template_page import show_document_template_page
 
 # =========================
 # INIT DATABASE
@@ -269,6 +270,7 @@ if role == "ADMIN":
         "⚠️ Overdue",
         "📑 Finance",
         f"🔔 Notification Center ({alert_count})",
+        "📝 Document Templates",
         "📨 Document Tracking",
         f"📦 Equipment Tracking ({equipment_alert_count})",
         "💵 Revenue Management",
@@ -342,6 +344,8 @@ try:
         show_finance_page()
     elif page.startswith("🔔 Notification Center"):
         show_notification_page()
+    elif page == "📝 Document Templates":
+        show_document_template_page()    
     elif page == "📈 Analytics Dashboard" and ENABLE_CHART_PAGE:
         show_chart_customer_page()
     elif page == "📨 Document Tracking":
