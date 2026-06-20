@@ -208,13 +208,58 @@ st.sidebar.markdown(f"""
 </div>
 """, unsafe_allow_html=True)
 
-# =========================
-# MENU BY ROLE
-# =========================
+# Lấy dữ liệu alert từ Service
 alert_summary = SidebarNotificationService.get_alert_summary()
 alert_count = alert_summary["total"]
 equipment_alert_count = EquipmentTrackingNotificationService.get_alert_count()
 
+# ========================================================
+# ĐÃ DI CHUYỂN: KHU VỰC THÔNG BÁO TỔNG HỢP LÊN NGAY DƯỚI PROFILE
+# ========================================================
+if alert_count > 0:
+    with st.sidebar.expander(f"🔔 Quick Notification Center ({alert_count})", expanded=False):
+        st.markdown('<div style="margin-top: 8px;"></div>', unsafe_allow_html=True)
+        
+        alert_items = [
+            ("missing_cert", "📄 Missing Cert", "#ef4444"),
+            ("payment_overdue", "💰 Payment Overdue", "#f97316"),
+            ("due_soon", "📅 Due Soon", "#3b82f6"),
+            ("missing_invoice", "🧾 Missing Invoice", "#dc2626"),
+            ("missing_send", "📨 Missing Send", "#ea580c"),
+            ("pending_return", "📬 Pending Return", "#2563eb")
+        ]
+        
+        for key, label, color in alert_items:
+            count = alert_summary.get(key, 0)
+            if count > 0:
+                st.markdown(f"""
+                <div style="
+                    display: flex; 
+                    justify-content: space-between; 
+                    align-items: center; 
+                    padding: 8px 10px; 
+                    background: rgba(255,255,255,0.05); 
+                    border-radius: 6px; 
+                    margin-bottom: 6px;
+                    border-left: 3px solid {color};
+                ">
+                    <span style="font-size: 13px; color: #e2e8f0;">{label}</span>
+                    <span style="
+                        background: {color}; 
+                        color: white; 
+                        font-size: 11px; 
+                        font-weight: bold; 
+                        padding: 2px 8px; 
+                        border-radius: 10px;
+                    ">{count}</span>
+                </div>
+                """, unsafe_allow_html=True)
+
+st.sidebar.divider() # Vạch ngăn cách giữa Thông báo và Menu hệ thống
+
+# =========================
+# MENU BY ROLE
+# =========================
 role = st.session_state["role"]
 
 if role == "ADMIN":
@@ -274,29 +319,6 @@ page = st.sidebar.radio(
 )
 
 st.session_state["current_page"] = page
-
-st.sidebar.divider()
-
-if alert_count > 0:
-    st.sidebar.markdown(f'<div class="notification-card orange-card">⚠️ Total Active Alerts: {alert_count}</div>', unsafe_allow_html=True)
-
-    if alert_summary["missing_cert"] > 0:
-        st.sidebar.write(f"📄 Missing Cert: {alert_summary['missing_cert']}")
-
-    if alert_summary["payment_overdue"] > 0:
-        st.sidebar.write(f"💰 Payment Overdue: {alert_summary['payment_overdue']}")
-
-    if alert_summary["due_soon"] > 0:
-        st.sidebar.write(f"📅 Due Soon: {alert_summary['due_soon']}")
-
-    if alert_summary["missing_invoice"] > 0:
-        st.sidebar.write(f"🧾 Missing Invoice: {alert_summary['missing_invoice']}")
-
-    if alert_summary["missing_send"] > 0:
-        st.sidebar.write(f"📨 Missing Send: {alert_summary['missing_send']}")
-
-    if alert_summary["pending_return"] > 0:
-        st.sidebar.write(f"📬 Pending Return: {alert_summary['pending_return']}")
 
 # =========================
 # LOGOUT
