@@ -8,3 +8,5 @@ dist/
 build/
 *.spec
 database/app.db
+database/app.db-wal
+database/app.db-shm
