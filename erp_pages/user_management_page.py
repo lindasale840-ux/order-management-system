@@ -2,6 +2,9 @@ import streamlit as st
 from repositories.user_repository import UserRepository
 from utils.password_utils import hash_password
 from utils.auth_guard import require_admin
+from repositories.assistant_sale_repository import (
+    AssistantSaleRepository
+)
 
 def show_user_management_page():
     require_admin()
@@ -115,7 +118,11 @@ def show_user_management_page():
                 if role == "ADMIN":
                     final_sale_owner = "ALL"
                 elif role == "SALE":
-                    final_sale_owner = clean_username
+                    final_sale_owner = (
+                        sale_owner.strip()
+                        if sale_owner.strip()
+                        else clean_username
+                    )
                 else:
                     final_sale_owner = sale_owner
 
@@ -126,6 +133,83 @@ def show_user_management_page():
     st.divider()
     st.subheader("Existing Users")
     st.dataframe(users_df, use_container_width=True)
+    
+    st.divider()
+    st.subheader("🤝 Assistant - Sale Mapping")
+    
+    assistant_df = users_df[
+    users_df["role"] == "ASSISTANT"
+    ]
+
+    assistant_list = (
+        assistant_df["username"]
+        .tolist()
+    )
+    
+    sale_list = (
+        users_df["sale_owner"]
+        .dropna()
+        .astype(str)
+        .str.strip()
+        .unique()
+        .tolist()
+    )
+
+    sale_list.sort()
+    
+    if assistant_list:
+
+        selected_assistant = st.selectbox(
+            "Select Assistant",
+            assistant_list
+        )
+
+        current_sales = (
+            AssistantSaleRepository
+            .get_sales_by_assistant(
+                selected_assistant
+            )
+        )
+
+        selected_sales = st.multiselect(
+            "Supported Sales",
+            options=sale_list,
+            default=current_sales
+        )
+
+        if st.button(
+            "💾 Save Mapping"
+        ):
+
+            AssistantSaleRepository\
+                .delete_by_assistant(
+                    selected_assistant
+                )
+
+            for sale in selected_sales:
+
+                AssistantSaleRepository\
+                    .add_mapping(
+                        selected_assistant,
+                        sale
+                    )
+
+            st.success(
+                "Mapping saved."
+            )
+
+            st.rerun()
+            
+    mapping_df = (
+        AssistantSaleRepository
+        .get_all()
+    )
+
+    if not mapping_df.empty:
+        st.dataframe(
+            mapping_df,
+            use_container_width=True
+        )        
 
     st.divider()
     st.subheader("Delete User")
