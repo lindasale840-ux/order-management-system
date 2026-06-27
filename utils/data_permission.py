@@ -31,8 +31,14 @@ def filter_by_sale_owner(df):
             df["sale_owner"]
             == sale_owner
         ]
-
+        
     if role == "ASSISTANT":
+
+        return df[
+            df["created_by"] == username
+        ]    
+
+    #if role == "ASSISTANT":
 
         sales = (
             AssistantSaleRepository
@@ -57,4 +63,4 @@ def filter_by_sale_owner(df):
 
         return df.iloc[0:0]
 
-    return df.iloc[0:0]
+    #return df.iloc[0:0]
