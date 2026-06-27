@@ -60,6 +60,16 @@ def show_notification_page():
     # MISSING DOCUMENT SENDING LOGIC
     # =========================
     tracking_df = DocumentTrackingRepository.get_latest_tracking()
+    df = FinanceService.build_finance_dataframe()
+
+    allowed_orders = set(
+        df["order_number"].astype(str)
+    )
+
+    tracking_df = tracking_df[
+        tracking_df["order_number"].astype(str)
+        .isin(allowed_orders)
+    ]
     sent_orders = set()
 
     if not tracking_df.empty:

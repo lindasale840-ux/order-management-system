@@ -33,6 +33,16 @@ class SidebarNotificationService:
         pending_return = 0
 
         tracking_df = DocumentTrackingRepository.get_latest_tracking()
+        df = FinanceService.build_finance_dataframe()
+
+        allowed_orders = set(
+            df["order_number"].astype(str)
+        )
+
+        tracking_df = tracking_df[
+            tracking_df["order_number"].astype(str)
+            .isin(allowed_orders)
+        ]
         today = pd.Timestamp.today()
 
         # =========================
