@@ -456,7 +456,52 @@ def initialize_database():
         CREATE INDEX IF NOT EXISTS idx_logs_customer
         ON logs(customer_name)
         """))
+        
+        # =========================
+        # ASSISTANT SALE MAPPING
+        # =========================
 
+        conn.execute(text("""
+
+        CREATE TABLE IF NOT EXISTS assistant_sale_mapping (
+
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+            assistant_username TEXT NOT NULL,
+
+            sale_owner TEXT NOT NULL,
+
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+            UNIQUE(
+                assistant_username,
+                sale_owner
+            )
+
+        )
+
+        """))
+
+        conn.execute(text("""
+
+        CREATE INDEX IF NOT EXISTS
+        idx_assistant_mapping_assistant
+        ON assistant_sale_mapping(
+            assistant_username
+        )
+
+        """))
+
+        conn.execute(text("""
+
+        CREATE INDEX IF NOT EXISTS
+        idx_assistant_mapping_sale
+        ON assistant_sale_mapping(
+            sale_owner
+        )
+
+        """))
+        
         # =========================
         # DEFAULT ADMIN
         # =========================
