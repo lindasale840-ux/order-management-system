@@ -5,7 +5,23 @@ from repositories.order_repository import OrderRepository
 from utils.data_permission import filter_by_sale_owner
 from utils.auth_guard import require_editor
 from components.aggrid_table import render_aggrid
+from io import BytesIO
 
+
+def export_excel(df):
+    output = BytesIO()
+
+    with pd.ExcelWriter(
+        output,
+        engine="openpyxl"
+    ) as writer:
+        df.to_excel(
+            writer,
+            index=False,
+            sheet_name="Orders"
+        )
+
+    return output.getvalue()
 def show_dashboard_page():
     require_editor()
 
@@ -116,12 +132,23 @@ def show_dashboard_page():
     st.divider()
 
     # --- DATA PROCESSING & FILTRATION ---
-    df = OrderRepository.get_all_orders()
-    df["measurement_date"] = pd.to_datetime(df["measurement_date"], errors="coerce")
-    df["next_calibration_date"] = df["measurement_date"] + pd.DateOffset(months=11)
-    df = filter_by_sale_owner(df)
+    all_df = OrderRepository.get_all_orders()
 
-    st.metric("Total Operational Orders", len(df))
+    all_df["measurement_date"] = pd.to_datetime(
+        all_df["measurement_date"],
+        errors="coerce"
+    )
+
+    all_df["next_calibration_date"] = (
+        all_df["measurement_date"]
+        + pd.DateOffset(months=11)
+    )
+
+    all_df = filter_by_sale_owner(all_df)
+
+    df = all_df.copy()
+
+    #st.metric("Total Operational Orders", len(df))
 
     # --- SEARCH BAR SECTION ---
     search_text = st.text_input("🔍 Filter Customer / Order / Invoice Group Global Data")
@@ -132,6 +159,31 @@ def show_dashboard_page():
         invoice_match = df["invoice_group"].astype(str).str.lower().str.contains(search_text, na=False)
         df = df[customer_match | order_match | invoice_match]
 
+    col1, col2, col3 = st.columns([2, 2, 2])
+
+    with col1:
+        st.metric(
+            "Total Operational Orders",
+            len(df)
+        )
+
+    with col2:
+        st.download_button(
+            "📥 Download All Orders",
+            data=export_excel(all_df),
+            file_name="all_orders.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            use_container_width=True
+        )
+
+    with col3:
+        st.download_button(
+            "📥 Download Filtered Orders",
+            data=export_excel(df),
+            file_name="filtered_orders.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            use_container_width=True
+        )
     # --- ĐÃ SỬA: BỘ ĐIỀU HƯỚNG PHÂN TRANG THUỒN PYTHON CAO CẤP ---
     st.subheader("📋 Data Viewer")
     

@@ -870,7 +870,9 @@ def show_revenue_management_page():
 
             height=300,
 
-            page_size=10
+            page_size=10,
+            
+            key="revenue_history_table"
         )
 
         revenue_excel = dataframe_to_excel({
