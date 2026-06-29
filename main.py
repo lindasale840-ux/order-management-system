@@ -1,6 +1,9 @@
 import streamlit as st
 import traceback
 
+# === CHÈN THÊM IMPORT NÀY ĐỂ ĐẾM SỐ USER ONLINE ===
+from streamlit.runtime import get_instance
+
 ENABLE_CHART_PAGE = True
 
 from erp_pages.login_page import show_login_page
@@ -38,6 +41,30 @@ st.set_page_config(
     page_icon="📊",
     layout="wide"
 )
+
+# ========================================================
+# KST: 🔒 KIỂM TRA GIỚI HẠN SỐ LƯỢNG NGƯỜI TRUY CẬP (MAX 4)
+# ========================================================
+try:
+    runtime = get_instance()
+    if runtime:
+        # Lấy danh sách toàn bộ các tab trình duyệt đang kết nối đến ERP
+        active_sessions = runtime._session_mgr.list_active_sessions()
+        
+        # Nếu đã có từ 4 người đang kết nối TRỞ LÊN, và trình duyệt hiện tại CHƯA đăng nhập
+        if len(active_sessions) > 4 and not st.session_state.get("logged_in", False):
+            st.markdown("""
+                <div style="text-align: center; margin-top: 100px; font-family: 'Inter', sans-serif;">
+                    <h1 style="color: #ef4444; font-size: 50px;">⚠️ HỆ THỐNG QUÁ TẢI</h1>
+                    <h3 style="color: #334155;">Hiện tại đã đạt giới hạn tối đa 4 người truy cập cùng lúc.</h3>
+                    <p style="color: #64748b; font-size: 16px;">Vui lòng chờ đồng nghiệp thoát phiên làm việc hoặc quay lại sau ít phút.</p>
+                    <hr style="width: 30%; margin: 20px auto; border-color: #cbd5e1;"/>
+                    <p style="color: #94a3b8; font-size: 13px;">Hệ thống sẽ tự động mở cổng kết nối khi có vị trí trống.</p>
+                </div>
+            """, unsafe_allow_html=True)
+            st.stop()  # Ngắt toàn bộ code phía dưới, không cho hiện màn hình Login
+except Exception as e:
+    pass # Nếu phát sinh lỗi đọc bộ nhớ runtime, bỏ qua để tránh sập app ERP
 
 # =========================
 # LOGIN CHECK
