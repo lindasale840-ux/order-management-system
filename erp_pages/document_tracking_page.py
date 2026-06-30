@@ -8,6 +8,7 @@ from utils.excel_export import dataframe_to_excel
 from utils.auth_guard import require_editor
 from repositories.other_document_tracking_repository import OtherDocumentTrackingRepository
 from services.other_document_tracking_service import OtherDocumentTrackingService
+from utils.data_permission import filter_by_sale_owner
 
 def show_document_tracking_page():
     require_editor()
@@ -17,6 +18,7 @@ def show_document_tracking_page():
     st.header("📋 Order Document Tracking")
 
     orders_df = OrderRepository.get_all_orders()
+    orders_df = filter_by_sale_owner(orders_df)
     orders_df["cert_status"] = pd.to_datetime(orders_df["cert_status"], errors="coerce")
     orders_df = orders_df[orders_df["cert_status"].notna()]
 
@@ -123,7 +125,7 @@ def show_document_tracking_page():
     st.subheader("📊 Global Document Tracking Ledger Master")
 
     tracking_df = DocumentTrackingRepository.get_all()
-
+    tracking_df = filter_by_sale_owner(tracking_df)
     if tracking_df.empty:
         st.info("System master tracking log data repository empty.")
     else:

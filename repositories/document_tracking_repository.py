@@ -20,7 +20,10 @@ class DocumentTrackingRepository:
 
             dt.*,
 
-            o.customer_name
+            o.customer_name,
+            
+            o.created_by,
+            o.sale_owner
 
         FROM document_tracking dt
 
@@ -154,7 +157,9 @@ class DocumentTrackingRepository:
 
             dt.*,
 
-            o.customer_name
+            o.customer_name,
+            o.created_by,
+            o.sale_owner
 
         FROM document_tracking dt
 
