@@ -41,6 +41,7 @@ class AuthService:
             return {
                 "status": "SUCCESS",
                 "data": {
+                    "id": user["id"],
                     "username": user["username"],
                     "role": user["role"],
                     "sale_owner": user["sale_owner"]

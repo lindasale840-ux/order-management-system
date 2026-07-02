@@ -27,6 +27,7 @@ from services.equipment_tracking_notification_service import EquipmentTrackingNo
 from erp_pages.historical_import_page import show_historical_import_page
 from erp_pages.trash_bin_page import show_trash_bin_page
 from erp_pages.ownership_transfer_page import show_ownership_transfer_page
+from erp_pages.notes_page import show_notes_page
 
 # =========================
 # INIT DATABASE
@@ -285,6 +286,13 @@ if alert_count > 0:
 st.sidebar.divider() # Vạch ngăn cách giữa Thông báo và Menu hệ thống
 
 # =========================
+# NOTIFICATION BADGE (Notes)  <--- THÊM PHẦN NÀY VÀO ĐÂY
+# =========================
+from components.note_components import render_notification_badge
+
+# Hiển thị badge chuông ở góc phải màn hình
+render_notification_badge()
+# =========================
 # MENU BY ROLE
 # =========================
 role = st.session_state["role"]
@@ -299,6 +307,7 @@ if role == "ADMIN":
         "📨 Document Tracking",
         f"📦 Equipment Tracking ({equipment_alert_count})",
         "💵 Revenue Management",
+        "📝 Notes Management",
         "📝 Logs",
         "👥 User Management",
         "🔄 Ownership Transfer",
@@ -320,6 +329,7 @@ elif role == "ASSISTANT":
         "📨 Document Tracking",
         f"📦 Equipment Tracking ({equipment_alert_count})",
         "💵 Revenue Management",
+        "📝 Notes Management",
         "📝 Logs"
     ]        
 
@@ -330,6 +340,7 @@ elif role == "SALE":
         f"🔔 Notification Center ({alert_count})",
         "📈 Analytics Dashboard",
         "💵 Revenue Management",
+        "📝 Notes Management",
         "📝 Logs"
     ]
 
@@ -376,7 +387,9 @@ try:
     elif page.startswith("📦 Equipment Tracking"):
         show_equipment_tracking_page()   
     elif page == "💵 Revenue Management":
-        show_revenue_management_page()    
+        show_revenue_management_page()  
+    elif page == "📝 Notes Management":  # <--- THÊM DÒNG NÀY
+        show_notes_page()      
     elif page == "📝 Logs":
         show_logs_page()
     elif page == "👥 User Management":

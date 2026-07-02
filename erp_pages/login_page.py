@@ -26,6 +26,8 @@ def show_login_page():
             st.session_state["username"] = user_data["username"]
             st.session_state["role"] = user_data["role"]
             st.session_state["sale_owner"] = user_data["sale_owner"]
+            # 👇 THÊM DÒNG NÀY (lấy user_id từ database)
+            st.session_state["user_id"] = user_data.get("id")  # hoặc user_data["id"]
             st.success("🎉 Đăng nhập thành công!")
             st.rerun()
         else:

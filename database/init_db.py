@@ -502,6 +502,48 @@ def initialize_database():
 
         """))
         
+        
+        # =========================
+        # NOTES
+        # =========================
+        conn.execute(text("""
+        CREATE TABLE IF NOT EXISTS notes (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            title TEXT NOT NULL,
+            content TEXT,
+            category TEXT DEFAULT 'general',
+            priority TEXT DEFAULT 'medium',
+            layer INTEGER DEFAULT 1,
+            status TEXT DEFAULT 'pending',
+            due_date DATE,
+            is_read INTEGER DEFAULT 0,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+        )
+        """))
+
+        # Indexes cho notes
+        conn.execute(text("""
+        CREATE INDEX IF NOT EXISTS idx_notes_user_id ON notes(user_id)
+        """))
+
+        conn.execute(text("""
+        CREATE INDEX IF NOT EXISTS idx_notes_status ON notes(status)
+        """))
+
+        conn.execute(text("""
+        CREATE INDEX IF NOT EXISTS idx_notes_priority ON notes(priority)
+        """))
+
+        conn.execute(text("""
+        CREATE INDEX IF NOT EXISTS idx_notes_layer ON notes(layer)
+        """))
+
+        conn.execute(text("""
+        CREATE INDEX IF NOT EXISTS idx_notes_is_read ON notes(is_read)
+        """))
         # =========================
         # DEFAULT ADMIN
         # =========================
