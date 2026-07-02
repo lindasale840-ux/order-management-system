@@ -142,6 +142,75 @@ def show_notes_page():
                             st.error(result['message'])
         st.divider()
     
+    
+    # ---------------------------------------------------------
+    # 🔔 TRUNG TÂM CẢNH BÁO TIẾN ĐỘ (SLIDE VIEW / ALERT HUB)
+    # ---------------------------------------------------------
+    st.markdown("### 🔔 Điểm tin công việc khẩn cấp")
+    
+    # Đọc toàn bộ ghi chú gốc để quét trạng thái khẩn cấp trước khi lọc
+    all_raw_notes = NoteService.get_notes(user_id, role)
+    
+    overdue_tasks = []    # Danh sách việc đã quá hạn
+    today_tasks = []      # Danh sách việc phải xong hôm nay
+    urgent_tasks = []     # Danh sách việc sắp đến hạn (trong vòng 3 ngày)
+    
+    if all_raw_notes:
+        today = datetime.now().date()
+        for n in all_raw_notes:
+            # Chỉ thông báo các việc chưa hoàn thành (khác 'done')
+            if n.get('status') != 'done' and n.get('due_date'):
+                try:
+                    due_date = datetime.strptime(n['due_date'], '%Y-%m-%d').date()
+                    delta = (due_date - today).days
+                    
+                    task_info = f"📌 **{n['title']}** ({n.get('due_date')})"
+                    
+                    if delta < 0:
+                        overdue_tasks.append(f"{task_info} - *Trễ {abs(delta)} ngày!*")
+                    elif delta == 0:
+                        today_tasks.append(task_info)
+                    elif 0 < delta <= 3:
+                        urgent_tasks.append(f"{task_info} - *Còn {delta} ngày*")
+                except:
+                    pass
+
+    # Hiển thị các khối thông báo động theo dạng Slide / Tab View để không tốn diện tích
+    if not overdue_tasks and not today_tasks and not urgent_tasks:
+        st.success("🎉 Tuyệt vời! Bạn không có công việc nào bị quá hạn hoặc quá gấp trong 3 ngày tới.")
+    else:
+        # Sử dụng st.tabs tạo hiệu ứng lướt xem (Slide View) cực mượt
+        tab_overdue, tab_today, tab_urgent = st.tabs([
+            f"🚨 Quá hạn ({len(overdue_tasks)})", 
+            f"🔥 Hạn hôm nay ({len(today_tasks)})", 
+            f"⏳ Sắp đến hạn ({len(urgent_tasks)})"
+        ])
+        
+        with tab_overdue:
+            if overdue_tasks:
+                st.error("Các công việc sau đã VƯỢT QUÁ thời hạn! Vui lòng xử lý ngay:")
+                for task in overdue_tasks:
+                    st.markdown(f"- {task}")
+            else:
+                st.write("🟢 Không có công việc nào quá hạn.")
+                
+        with tab_today:
+            if today_tasks:
+                st.warning("Hạn chót là HÔM NAY! Ưu tiên hoàn thành các việc này:")
+                for task in today_tasks:
+                    st.markdown(f"- {task}")
+            else:
+                st.write("🟢 Hôm nay không có việc nào đến hạn chót.")
+                
+        with tab_urgent:
+            if urgent_tasks:
+                st.info("Các công việc cần chú ý trong 3 ngày tới:")
+                for task in urgent_tasks:
+                    st.markdown(f"- {task}")
+            else:
+                st.write("🟢 Không có việc nào gấp trong vài ngày tới.")
+
+    st.write("") # Khoảng cách nhỏ
     # 🔍 TÍNH NĂNG 1: TÌM KIẾM NHANH & BỘ LỌC ĐỘNG
     st.markdown("### 🛠️ Bộ lọc & Tìm kiếm")
     search_query = st.text_input("🔍 Tìm kiếm nhanh", placeholder="Nhập tiêu đề hoặc nội dung ghi chú cần tìm...")
