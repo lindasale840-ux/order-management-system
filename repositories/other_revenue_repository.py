@@ -38,7 +38,9 @@ class OtherRevenueRepository:
 
         amount,
 
-        note
+        note,
+        
+        created_by="System"
     ):
 
         with engine.begin() as conn:
@@ -51,7 +53,9 @@ class OtherRevenueRepository:
 
                 amount,
 
-                note
+                note,
+                
+                created_by
 
             )
 
@@ -61,7 +65,9 @@ class OtherRevenueRepository:
 
                 :amount,
 
-                :note
+                :note,
+                
+                :created_by
 
             )
 
@@ -73,7 +79,9 @@ class OtherRevenueRepository:
 
                 "amount": amount,
 
-                "note": note
+                "note": note,
+                
+                "created_by": created_by
             })
 
     @staticmethod

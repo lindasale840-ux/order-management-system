@@ -269,7 +269,9 @@ def show_revenue_management_page():
 
                 other_revenue_amount,
 
-                other_revenue_note
+                other_revenue_note,
+                
+                current_user # <-- Truyền thêm dòng này vào đây
             )
 
             st.success(
@@ -286,7 +288,40 @@ def show_revenue_management_page():
         OtherRevenueRepository
         .get_all_revenues()
     )
+    
+    # --- ĐOẠN THÊM MỚI: PHÂN QUYỀN AN TOÀN CHO OTHER REVENUE ---
+    # =========================
+    # LOAD EXPENSE DATA
+    # =========================
+    other_revenue_df = OtherRevenueRepository.get_all_revenues()
 
+    current_user = st.session_state.get("username") # 'Chi', 'Linh', 'LINDA', 'TONY', 'Thịnh'...
+    current_role = st.session_state.get("role")     # 'Admin', 'Sale', 'User'
+
+    # Định nghĩa cấu trúc quản lý (Sale nào quản lý User nào) để code tự động lọc
+    MANAGEMENT_MAP = {
+        "LINDA": ["Thịnh", "Chi", "Linh_Linda"],
+        "TONY": ["Linh_Tony"]
+    }
+
+    if not other_revenue_df.empty and "created_by" in other_revenue_df.columns:
+        if current_role != "Admin":
+            if current_role == "Sale":
+                # Nếu là Sale (LINDA/TONY): Lấy danh sách các user mình quản lý
+                managed_users = MANAGEMENT_MAP.get(current_user, [])
+                # Sale nhìn thấy bản ghi của chính mình HOẶC của các user mình quản lý
+                other_revenue_df = other_revenue_df[
+                    (other_revenue_df["created_by"] == current_user) | 
+                    (other_revenue_df["created_by"].isin(managed_users))
+                ]
+            else:
+                # Nếu là User thường (Chi/Linh/Thịnh): Chỉ nhìn thấy đúng đơn do mình tạo
+                other_revenue_df = other_revenue_df[other_revenue_df["created_by"] == current_user]
+
+        # 2. Lọc đồng bộ theo Hộp chọn "Assistant" ở đầu trang
+        if selected_assistant != "ALL":
+            other_revenue_df = other_revenue_df[other_revenue_df["created_by"] == selected_assistant]
+    # -----------------------------------------------------------
     if not other_revenue_df.empty:
 
         other_revenue_df["expense_date"] = (
