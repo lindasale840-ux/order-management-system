@@ -338,9 +338,29 @@ LANGUAGES = {
         "kh_ng_c_vi_c_n_o_g_p_trong_v_i": "🟢 Không có việc nào gấp trong vài ngày tới.",
         "sla_compliant_ok": "🟢 SLA Compliant (OK)",
         "assistant_sale_mapping": "🤝 Assistant - Sale Mapping",
-        "fields_marked_required_payment":"⚠️ Fields marked (*) require valid entries to authorize save execution. (Invoice Group non-empty, Total valuation > 0, Payment Terms must be between 30 and 365 days)."
+        "fields_marked_required_payment":"⚠️ Fields marked (*) require valid entries to authorize save execution. (Invoice Group non-empty, Total valuation > 0, Payment Terms must be between 30 and 365 days).",
+        "tab_missing_cert": "📄 Missing Cert",
+        "tab_payment_overdue": "💰 Payment Overdue",
+        "tab_due_soon": "📅 Due Soon",
+        "tab_missing_invoice": "🧾 Missing Invoice",
+        "tab_missing_send": "📨 Missing Send",
+        "tab_pending_return": "📬 Pending Return",
+        "tab_calibration_overdue": "⛔ Calibration Overdue",
+        
+        "lbl_missing_cert": "Missing Certificate",
+        "msg_no_missing_cert": "No missing certificate matching parameters"
     },
     "vi": {
+        "tab_missing_cert": "📄 Thiếu CC",
+        "tab_payment_overdue": "💰 Quá hạn TT",
+        "tab_due_soon": "📅 Sắp đến hạn",
+        "tab_missing_invoice": "🧾 Thiếu hóa đơn",
+        "tab_missing_send": "📨 Chưa gửi",
+        "tab_pending_return": "📬 Chờ trả lại",
+        "tab_calibration_overdue": "⛔ Quá hạn kiểm định",
+        
+        "lbl_missing_cert": "Chứng chỉ còn thiếu",
+        "msg_no_missing_cert": "Không có chứng chỉ nào bị thiếu theo bộ lọc",
         "fields_marked_required_payment": "⚠️ Các trường được đánh dấu (*) bắt buộc phải nhập thông tin hợp lệ để có thể lưu dữ liệu. Cụ thể: Nhóm hóa đơn (Invoice Group) không được để trống, Tổng giá trị (Total Valuation) phải lớn hơn 0 và Điều khoản thanh toán (Payment Terms) phải từ 30 đến 365 ngày.",
         "login_title": "# 🔐 Đăng Nhập",
         "danh_s_ch_ghi_ch_table_view": "### 📊 Danh sách Ghi chú (Dạng Bảng)",
@@ -1019,6 +1039,16 @@ LANGUAGES = {
         "kh_ng_c_vi_c_n_o_g_p_trong_v_i": "🟢 状态良好。近期无临近紧急催办的待办项。",
         "sla_compliant_ok": "🟢 符合常态化交付时效控制标准 (SLA OK)",
         "assistant_sale_mapping": "🤝 配置销售人员 - 助理团队归属映射矩阵",
+        "tab_missing_cert": "📄 缺失证书",
+        "tab_payment_overdue": "💰 逾期未付",
+        "tab_due_soon": "📅 即将到期",
+        "tab_missing_invoice": "🧾 缺失发票",
+        "tab_missing_send": "📨 漏发/未发",
+        "tab_pending_return": "📬 等待 퇴回/返回",
+        "tab_calibration_overdue": "⛔ 校准逾期",
+        
+        "lbl_missing_cert": "缺失的证书总数",
+        "msg_no_missing_cert": "未找到符合条件的缺证数据"
     }
 }
 

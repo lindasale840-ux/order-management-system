@@ -7,6 +7,8 @@ from repositories.document_tracking_repository import DocumentTrackingRepository
 from components.aggrid_table import render_aggrid
 from utils.excel_export import dataframe_to_excel
 from config.app_config import DOCUMENT_WARNING_DAYS
+# Chỉ cần import đúng 1 dòng này từ file languages
+from languages import t
 
 def export_button(df, filename):
     excel_data = dataframe_to_excel({"Data": df})
@@ -18,12 +20,12 @@ def export_button(df, filename):
     )
 
 def show_notification_page():
-    st.title("🔔 Notification Center")
+    st.title(t("notification_center"))
 
     # ========================================================
     # GLOBAL SEARCH FILTER
     # ========================================================
-    search_keyword = st.text_input("🔍 Fast Query Search Client Account / Target Order Sequence").strip()
+    search_keyword = st.text_input(t("fast_query_search_client_accou")).strip()
 
     df = FinanceService.build_finance_dataframe()
 
@@ -129,26 +131,26 @@ def show_notification_page():
     col1, col2, col3, col4, col5, col6, col7 = st.columns(7)
 
     with col1:
-        st.metric("📄 Missing Cert", len(missing_cert_df))
+        st.metric(t('tab_missing_cert'), len(missing_cert_df))
     with col2:
-        st.metric("💰 Payment Overdue", len(payment_overdue_df))
+        st.metric(t('tab_payment_overdue'), len(payment_overdue_df))
     with col3:
-        st.metric("📅 Due Soon", len(due_soon_df))
+        st.metric(t('tab_due_soon'), len(due_soon_df))
     with col4:
-        st.metric("🧾 Missing Invoice", len(missing_invoice_df))
+        st.metric(t('tab_missing_invoice'), len(missing_invoice_df))
     with col5:
-        st.metric("📨 Missing Send", len(missing_document_df))
+        st.metric(t('tab_missing_send'), len(missing_document_df))
     with col6:
-        st.metric("📬 Pending Return", len(pending_return_df))  
+        st.metric(t('tab_pending_return'), len(pending_return_df))  
     with col7:
-        st.metric("⛔ Calibration Overdue", len(calibration_overdue_df))      
+        st.metric(t('tab_calibration_overdue'), len(calibration_overdue_df))      
 
     st.divider()
 
     # ========================================================
     # ĐỘT PHÁ: BỘ ĐIỀU KHIỂN PHÂN TRANG DÙNG CHUNG CHO TẤT CẢ CÁC TABS
     # ========================================================
-    st.subheader("📋 Filtered Alert Logs Controller")
+    st.subheader(t("filtered_alert_logs_controller"))
     col_p1, col_p2, col_p3 = st.columns([2, 2, 6])
     with col_p1:
         rows_per_page = st.selectbox(
@@ -182,20 +184,20 @@ def show_notification_page():
     # RENDER TABS SYSTEM
     # ========================================================
     tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
-        f"📄 Missing Cert ({len(missing_cert_df)})",
-        f"💰 Payment Overdue ({len(payment_overdue_df)})",
-        f"📅 Due Soon ({len(due_soon_df)})",
-        f"🧾 Missing Invoice ({len(missing_invoice_df)})",
-        f"📨 Missing Send ({len(missing_document_df)})",
-        f"📬 Pending Return ({len(pending_return_df)})",
-        f"⛔ Calibration Overdue ({len(calibration_overdue_df)})"
-    ])
+    f"{t('tab_missing_cert')} ({len(missing_cert_df)})",
+    f"{t('tab_payment_overdue')} ({len(payment_overdue_df)})",
+    f"{t('tab_due_soon')} ({len(due_soon_df)})",
+    f"{t('tab_missing_invoice')} ({len(missing_invoice_df)})",
+    f"{t('tab_missing_send')} ({len(missing_document_df)})",
+    f"{t('tab_pending_return')} ({len(pending_return_df)})",
+    f"{t('tab_calibration_overdue')} ({len(calibration_overdue_df)})"
+])
 
     # --- TAB 1 ---
     with tab1:
-        st.metric("Missing Certificate", len(missing_cert_df))
+        st.metric(t("lbl_missing_cert"), len(missing_cert_df))
         if missing_cert_df.empty:
-            st.success("No missing certificate matching parameters")
+            st.success(t("msg_no_missing_cert"))
         else:
             sliced_cert_df = missing_cert_df.iloc[start_idx:end_idx]
             render_aggrid(sliced_cert_df, height=500, page_size=rows_per_page, pagination=False, key="missing_cert_grid")
@@ -203,9 +205,9 @@ def show_notification_page():
 
     # --- TAB 2 ---
     with tab2:
-        st.metric("Payment Overdue", len(payment_overdue_df))
+        st.metric(t("payment_overdue"), len(payment_overdue_df))
         if payment_overdue_df.empty:
-            st.success("No overdue payment matching parameters")
+            st.success(t("no_overdue_payment_matching_pa"))
         else:
             sliced_payment_df = payment_overdue_df.iloc[start_idx:end_idx]
             render_aggrid(sliced_payment_df, height=500, page_size=rows_per_page, pagination=False, key="payment_overdue_grid")
@@ -213,9 +215,9 @@ def show_notification_page():
 
     # --- TAB 3 ---
     with tab3:
-        st.metric("Calibration Due Soon", len(due_soon_df))
+        st.metric(t("calibration_due_soon"), len(due_soon_df))
         if due_soon_df.empty:
-            st.success("No due soon matching parameters")
+            st.success(t("no_due_soon_matching_parameter"))
         else:
             sliced_due_df = due_soon_df.iloc[start_idx:end_idx]
             render_aggrid(sliced_due_df, height=500, page_size=rows_per_page, pagination=False, key="due_soon_grid")
@@ -223,9 +225,9 @@ def show_notification_page():
 
     # --- TAB 4 ---
     with tab4:
-        st.metric("Missing Invoice", len(missing_invoice_df))
+        st.metric(t("missing_invoice"), len(missing_invoice_df))
         if missing_invoice_df.empty:
-            st.success("No missing invoice matching parameters")
+            st.success(t("no_missing_invoice_matching_pa"))
         else:
             sliced_invoice_df = missing_invoice_df.iloc[start_idx:end_idx]
             render_aggrid(sliced_invoice_df, height=500, page_size=rows_per_page, pagination=False, key="missing_invoice_grid")
@@ -233,9 +235,9 @@ def show_notification_page():
 
     # --- TAB 5 ---
     with tab5:
-        st.metric("Missing Document Sending", len(missing_document_df))
+        st.metric(t("missing_document_sending"), len(missing_document_df))
         if missing_document_df.empty:
-            st.success("No missing document sending matching parameters")
+            st.success(t("no_missing_document_sending_ma"))
         else:
             sliced_doc_df = missing_document_df.iloc[start_idx:end_idx]
             render_aggrid(sliced_doc_df, height=500, page_size=rows_per_page, pagination=False, key="missing_document_grid")
@@ -243,9 +245,9 @@ def show_notification_page():
 
     # --- TAB 6 ---
     with tab6:
-        st.metric("Pending Return", len(pending_return_df))
+        st.metric(t("pending_return"), len(pending_return_df))
         if pending_return_df.empty:
-            st.success("No pending return matching parameters")
+            st.success(t("no_pending_return_matching_par"))
         else:
             display_df = pending_return_df[["customer_name", "order_number", "sent_date", "note"]].copy()
             sliced_return_df = display_df.iloc[start_idx:end_idx]
@@ -254,9 +256,9 @@ def show_notification_page():
             
     # --- TAB 7 ---
     with tab7:
-        st.metric("Calibration Overdue", len(calibration_overdue_df))
+        st.metric(t("calibration_overdue"), len(calibration_overdue_df))
         if calibration_overdue_df.empty:
-            st.success("No overdue calibration matching parameters")
+            st.success(t("no_overdue_calibration_matchin"))
         else:
             sliced_calib_df = calibration_overdue_df.iloc[start_idx:end_idx]
             render_aggrid(sliced_calib_df, height=500, page_size=rows_per_page, pagination=False, key="calibration_overdue_grid")
