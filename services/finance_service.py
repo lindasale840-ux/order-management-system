@@ -19,7 +19,7 @@ class FinanceService:
 
     @staticmethod
     @st.cache_data(ttl=10)
-    def build_finance_dataframe():
+    def build_finance_dataframe(username=None):
 
         print(
             "FinanceService.build_finance_dataframe() called"

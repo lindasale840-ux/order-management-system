@@ -6,8 +6,9 @@ from config.app_config import DOCUMENT_WARNING_DAYS
 class SidebarNotificationService:
 
     @staticmethod
-    def get_alert_summary():
-        df = FinanceService.build_finance_dataframe()
+    def get_alert_summary(username: str):
+        # Truyền username vào build_finance_dataframe để làm mới bộ đệm (cache key) theo từng user
+        df = FinanceService.build_finance_dataframe(username=username)
 
         missing_cert = len(
             df[df["cert_workflow_status"] == "Missing Cert"]

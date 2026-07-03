@@ -237,7 +237,8 @@ st.sidebar.markdown(f"""
 """, unsafe_allow_html=True)
 
 # Lấy dữ liệu alert từ Service
-alert_summary = SidebarNotificationService.get_alert_summary()
+current_user = st.session_state.get('username', '')
+alert_summary = SidebarNotificationService.get_alert_summary(username=current_user)
 alert_count = alert_summary["total"]
 equipment_alert_count = EquipmentTrackingNotificationService.get_alert_count()
 
