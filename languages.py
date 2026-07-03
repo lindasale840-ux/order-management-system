@@ -338,8 +338,10 @@ LANGUAGES = {
         "kh_ng_c_vi_c_n_o_g_p_trong_v_i": "🟢 Không có việc nào gấp trong vài ngày tới.",
         "sla_compliant_ok": "🟢 SLA Compliant (OK)",
         "assistant_sale_mapping": "🤝 Assistant - Sale Mapping",
+        "fields_marked_required_payment":"⚠️ Fields marked (*) require valid entries to authorize save execution. (Invoice Group non-empty, Total valuation > 0, Payment Terms must be between 30 and 365 days)."
     },
     "vi": {
+        "fields_marked_required_payment": "⚠️ Các trường được đánh dấu (*) bắt buộc phải nhập thông tin hợp lệ để có thể lưu dữ liệu. Cụ thể: Nhóm hóa đơn (Invoice Group) không được để trống, Tổng giá trị (Total Valuation) phải lớn hơn 0 và Điều khoản thanh toán (Payment Terms) phải từ 30 đến 365 ngày.",
         "login_title": "# 🔐 Đăng Nhập",
         "danh_s_ch_ghi_ch_table_view": "### 📊 Danh sách Ghi chú (Dạng Bảng)",
         "i_m_tin_c_ng_vi_c_kh_n_c_p": "### 🔔 Điểm tin công việc khẩn cấp",
@@ -679,6 +681,7 @@ LANGUAGES = {
         "assistant_sale_mapping": "🤝 Thiết lập cấu hình Trợ lý - Sale",
     },
     "zh": {
+        "fields_marked_required_payment": "⚠️ 带有 (*) 标记的字段必须填写有效内容后才能执行保存操作。（发票组不能为空，总金额必须大于 0, 付款期限必须在 30 至 365 天之间)。",
         "login_title": "# 🔐 用户登录",
         "danh_s_ch_ghi_ch_table_view": "### 📊 备忘录列表 (表格视图)",
         "i_m_tin_c_ng_vi_c_kh_n_c_p": "### 🔔 紧急工作简 báo",
