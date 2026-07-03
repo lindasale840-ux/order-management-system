@@ -42,7 +42,18 @@ st.set_page_config(
     page_icon="📊",
     layout="wide"
 )
+# Nhập bộ từ điển vừa tạo ở trên vào
+from languages import LANGUAGES
 
+# 1. Kiểm tra và thiết lập ngôn ngữ mặc định trong Session State của Streamlit (nếu chưa có)
+if "current_lang" not in st.session_state:
+    st.session_state["current_lang"] = "en"  # Mặc định ban đầu là tiếng Anh
+
+# 2. Tạo một hàm helper ngắn để dịch nhanh cho sạch code ở dưới
+def _(key):
+    lang = st.session_state["current_lang"]
+    # Nếu tìm thấy key trong ngôn ngữ đã chọn thì trả về, không thì trả về chính cái key hoặc chuỗi gốc tiếng Anh làm dự phòng
+    return LANGUAGES.get(lang, {}).get(key, LANGUAGES["en"].get(key, key))
 # ========================================================
 # KST: 🔒 KIỂM TRA GIỚI HẠN SỐ LƯỢNG NGƯỜI TRUY CẬP (MAX 4)
 # ========================================================
@@ -235,7 +246,50 @@ st.sidebar.markdown(f"""
     <div class="user-role">Role: {st.session_state['role']}</div>
 </div>
 """, unsafe_allow_html=True)
+# =========================
+# LANGUAGE SELECTOR 
+# =========================
+# 1. Thêm CSS sửa lỗi chữ màu trắng khó nhìn (Ép chữ trong ô selectbox thành màu tối)
+st.sidebar.markdown("""
+<style>
+    /* Ép màu chữ của nhãn và text bên trong ô selectbox trên Sidebar */
+    .stSelectbox div[data-baseweb="select"] div {
+        color: #1E293B !important; /* Màu xanh đen charcoal, cực kỳ dễ nhìn */
+    }
+    /* Sửa màu chữ cho phần tiêu đề "Ngôn ngữ" nếu bị mờ */
+    .stSelectbox label {
+        color: #334155 !important;
+    }
+</style>
+""", unsafe_allow_html=True)
 
+# 2. Khởi tạo ngôn ngữ mặc định nếu chưa có
+if 'language' not in st.session_state:
+    st.session_state['language'] = 'Tiếng Việt'
+
+# Đặt danh sách ngôn ngữ (Thêm Tiếng Trung)
+lang_options = ["Tiếng Việt", "English", "🇨🇳 中文 (简体)"]
+
+# Tìm vị trí index hiện tại để giữ đúng lựa chọn của user khi reload
+try:
+    current_index = lang_options.index(st.session_state['language'])
+except ValueError:
+    current_index = 0
+
+# 3. Hiển thị ô chọn ngôn ngữ đã sửa giao diện và thêm tiếng Trung
+selected_lang = st.sidebar.selectbox(
+    "🌐 Ngôn ngữ / Language / 语言",
+    options=lang_options,
+    index=current_index,
+    key="lang_selector"
+)
+
+# 4. Cập nhật trạng thái và làm mới trang nếu có thay đổi
+if selected_lang != st.session_state['language']:
+    st.session_state['language'] = selected_lang
+    st.rerun()
+
+st.sidebar.markdown("---")
 # Lấy dữ liệu alert từ Service
 current_user = st.session_state.get('username', '')
 alert_summary = SidebarNotificationService.get_alert_summary(username=current_user)

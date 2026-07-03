@@ -6,7 +6,8 @@ from utils.data_permission import filter_by_sale_owner
 from utils.auth_guard import require_editor
 from components.aggrid_table import render_aggrid
 from io import BytesIO
-
+# Chỉ cần import đúng 1 dòng này từ file languages
+from languages import t
 
 def export_excel(df):
     output = BytesIO()
@@ -25,7 +26,7 @@ def export_excel(df):
 def show_dashboard_page():
     require_editor()
 
-    st.title("📊 Dashboard Center")
+    st.title(t("dashboard_center"))
 
     tab1, tab2 = st.tabs([
         "📥 Manual Input Entry",
@@ -36,7 +37,7 @@ def show_dashboard_page():
         col1, col2 = st.columns(2)
 
         with col1:
-            order_number = st.text_input("Order Number (*)")
+            order_number = st.text_input(t("order_number"))
             existing_order = {}
 
             if order_number.strip():
@@ -44,8 +45,8 @@ def show_dashboard_page():
                 if not existing_df.empty:
                     existing_order = existing_df.iloc[0].to_dict()
 
-            customer_name = st.text_input(
-                "Customer Name (*)",
+            customer_name = st.text_input(t("customer_name")
+                ,
                 value=str(existing_order.get("customer_name", "") or "")
             )
 
@@ -54,16 +55,16 @@ def show_dashboard_page():
             if existing_order.get("measurement_date") is not None:
                 measurement_value = pd.to_datetime(existing_order["measurement_date"]).date()
 
-            measurement_date = st.date_input("Measurement Date", value=measurement_value)
+            measurement_date = st.date_input(t("measurement_date"), value=measurement_value)
 
             cert_saved = existing_order.get("cert_status")
             default_no_cert = pd.isna(cert_saved)
 
-            no_cert = st.checkbox("No Cert Yet", value=default_no_cert)
+            no_cert = st.checkbox(t("no_cert_yet"), value=default_no_cert)
 
             if no_cert:
                 cert_status = None
-                st.info("💡 Cert status will be kept empty.")
+                st.info(t("cert_status_will_be_kept_empty"))
             else:
                 cert_value = pd.Timestamp.today().date()
                 if pd.notna(cert_saved):
@@ -71,17 +72,17 @@ def show_dashboard_page():
                 cert_status = st.date_input("Cert Status Date", value=cert_value)
                 
             disable_calibration_notification = st.checkbox(
-                "Disable Calibration Notification",
+                t("disable_calibration_notificati"),
                 value=bool(existing_order.get("disable_calibration_notification", 0))
             )
             
             disable_document_notification = st.checkbox(
-                "Disable Document Notification",
+                t("disable_document_notification"),
                 value=bool(existing_order.get("disable_document_notification", 0))
             ) 
             
             disable_payment_notification = st.checkbox(
-                "Disable Payment Notification",
+                t("disable_payment_notification"),
                 value=bool(existing_order.get("disable_payment_notification", 0))
             )
 
@@ -89,9 +90,9 @@ def show_dashboard_page():
         is_form_invalid = (not order_number.strip()) or (not customer_name.strip())
         
         if is_form_invalid:
-            st.warning("⚠️ Please fill in all required fields marked with (*) to activate Sync.")
+            st.warning(t("please_fill_in_all_required_fi"))
 
-        if st.button("Sync Order Data", use_container_width=True, disabled=is_form_invalid):
+        if st.button(t("sync_order_data"), use_container_width=True, disabled=is_form_invalid):
             DashboardService.sync_order(
                 customer_name,
                 order_number,
@@ -151,7 +152,7 @@ def show_dashboard_page():
     #st.metric("Total Operational Orders", len(df))
 
     # --- SEARCH BAR SECTION ---
-    search_text = st.text_input("🔍 Filter Customer / Order / Invoice Group Global Data")
+    search_text = st.text_input(t("filter_customer_order_invoice"))
     if search_text:
         search_text = search_text.strip().lower()
         customer_match = df["customer_name"].astype(str).str.lower().str.contains(search_text, na=False)
@@ -163,13 +164,13 @@ def show_dashboard_page():
 
     with col1:
         st.metric(
-            "Total Operational Orders",
+            t("total_operational_orders"),
             len(df)
         )
 
     with col2:
         st.download_button(
-            "📥 Download All Orders",
+            t("download_all_orders"),
             data=export_excel(all_df),
             file_name="all_orders.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -178,14 +179,14 @@ def show_dashboard_page():
 
     with col3:
         st.download_button(
-            "📥 Download Filtered Orders",
+            t("download_filtered_orders"),
             data=export_excel(df),
             file_name="filtered_orders.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             use_container_width=True
         )
     # --- ĐÃ SỬA: BỘ ĐIỀU HƯỚNG PHÂN TRANG THUỒN PYTHON CAO CẤP ---
-    st.subheader("📋 Data Viewer")
+    st.subheader(t("data_viewer"))
     
     # Tạo 2 ô chọn song song: Một ô chọn số dòng/trang, một ô chọn số trang
     col_p1, col_p2, col_p3 = st.columns([2, 2, 6])
@@ -224,13 +225,13 @@ def show_dashboard_page():
     order_options_list = df["order_number"].tolist()
 
     # --- SECTION MÔ-ĐUN XÓA HÀNG LOẠT ---
-    st.subheader("🗑️ Bulk Move To Trash Actions")
-    selected_orders = st.multiselect("Select Orders for Disposal Queue", options=order_options_list, key="bulk_delete_orders_select")
-    confirm_bulk_delete = st.checkbox("I verify moving the chosen logs to system trash bin", key="bulk_delete_confirm_chk")
+    st.subheader(t("bulk_move_to_trash_actions"))
+    selected_orders = st.multiselect(t("select_orders_for_disposal_que"), options=order_options_list, key="bulk_delete_orders_select")
+    confirm_bulk_delete = st.checkbox(t("i_verify_moving_the_chosen_log"), key="bulk_delete_confirm_chk")
 
     is_bulk_delete_disabled = (not selected_orders) or (not confirm_bulk_delete)
 
-    if st.button("🗑️ Move Selected Rows To Trash", disabled=is_bulk_delete_disabled, use_container_width=True):
+    if st.button(t("move_selected_rows_to_trash"), disabled=is_bulk_delete_disabled, use_container_width=True):
         DashboardService.bulk_move_to_trash(selected_orders, st.session_state["username"])
         st.success(f"Successfully moved {len(selected_orders)} items to system trash.")
         st.rerun()
@@ -238,17 +239,17 @@ def show_dashboard_page():
     st.divider()
 
     # --- SECTION XÓA ĐƠN LẺ ---
-    st.subheader("🗑️ Delete Single Order Entry")
+    st.subheader(t("delete_single_order_entry"))
 
     if order_options_list:
-        selected_delete_order = st.selectbox("Select Target Order Number to Erase", order_options_list, key="delete_order_single_select")
-        confirm_delete = st.checkbox("Confirm move this exact entry to trash storage", key="single_delete_confirm_chk")
+        selected_delete_order = st.selectbox(t("select_target_order_number_to"), order_options_list, key="delete_order_single_select")
+        confirm_delete = st.checkbox(t("confirm_move_this_exact_entry"), key="single_delete_confirm_chk")
 
         is_single_delete_disabled = not confirm_delete
 
-        if st.button("🗑️ Proceed Single Trash Action", disabled=is_single_delete_disabled, use_container_width=True):
+        if st.button(t("proceed_single_trash_action"), disabled=is_single_delete_disabled, use_container_width=True):
             DashboardService.move_to_trash(selected_delete_order, st.session_state["username"])
             st.success(f"Item {selected_delete_order} shifted into trash partition.")
             st.rerun()
     else:
-        st.info("No orders currently active and available for clear operations.")
+        st.info(t("no_orders_currently_active_and"))
