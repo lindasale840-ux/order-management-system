@@ -16,7 +16,10 @@ class OtherDocumentTrackingService:
 
         received_date,
 
-        note
+        note,
+        
+        created_by,   # 1. Nhận thêm biến này từ Giao diện gửi vào
+        sale_owner    # 2. Nhận thêm biến này từ Giao diện gửi vào
 
     ):
 
@@ -30,7 +33,10 @@ class OtherDocumentTrackingService:
 
             received_date,
 
-            note
+            note,
+            
+            created_by,   # 3. Truyền tiếp xuống Repository
+            sale_owner    # 4. Truyền tiếp xuống Repository
 
         )
 

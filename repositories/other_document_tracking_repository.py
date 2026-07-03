@@ -44,7 +44,10 @@ class OtherDocumentTrackingRepository:
 
         received_date,
 
-        note
+        note,
+        
+        created_by,   # Thêm biến này
+        sale_owner    # Thêm biến này
 
     ):
 
@@ -64,7 +67,10 @@ class OtherDocumentTrackingRepository:
 
                     received_date,
 
-                    note
+                    note,
+                    
+                    created_by,   
+                    sale_owner   
 
                 )
 
@@ -78,7 +84,10 @@ class OtherDocumentTrackingRepository:
 
                     :received_date,
 
-                    :note
+                    :note,
+                    
+                    :created_by,
+                    :sale_owner
 
                 )
 
@@ -94,7 +103,10 @@ class OtherDocumentTrackingRepository:
 
                     "received_date": received_date,
 
-                    "note": note
+                    "note": note,
+                    
+                    "created_by": created_by,     # Truyền giá trị vào
+                    "sale_owner": sale_owner      # Truyền giá trị vào
 
                 }
 

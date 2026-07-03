@@ -181,7 +181,7 @@ def show_document_tracking_page():
             st.success(t("entry_safely_extracted_and_dro"))
             st.rerun()
         
-    # --- PHẦN KHỐI NHẬP LIỆU AD-HOC ---
+   # --- PHẦN KHỐI NHẬP LIỆU AD-HOC ---
     st.divider()
     st.subheader(t("miscellaneous_ad_hoc_document"))
 
@@ -208,12 +208,18 @@ def show_document_tracking_page():
         st.warning(t("ad_hoc_document_capture_fields"))
 
     if st.button(t("register_ad_hoc_document_entry"), use_container_width=True, disabled=is_other_invalid):
+        # LẤY THÔNG TIN USER ĐANG ĐĂNG NHẬP ĐỂ LƯU XUỐNG DB
+        current_username = st.session_state.get("username")
+        current_sale_owner = st.session_state.get("sale_owner")
+
         OtherDocumentTrackingService.add_tracking(
             other_customer,
             other_doc_type,
             other_sent_date,
             other_received_date,
-            other_note
+            other_note,
+            current_username,    # Truyền thêm username vào Service/Repository
+            current_sale_owner   # Truyền thêm sale_owner vào Service/Repository
         )
         st.success(t("miscellaneous_ad_hoc_tracking"))
         st.rerun()  
@@ -222,7 +228,12 @@ def show_document_tracking_page():
     st.divider()
     st.subheader(t("miscellaneous_document_trackin"))   
     
-    other_tracking_df = OtherDocumentTrackingRepository.get_all()
+    # Lấy dữ liệu thô từ DB lên
+    raw_other_tracking_df = OtherDocumentTrackingRepository.get_all()
+
+    # ÁP DỤNG HÀM PHÂN QUYỀN CỦA BẠN VÀO ĐÂY
+    # Giả định bạn đã import hàm `filter_by_sale_owner` ở đầu file này rồi nhé
+    other_tracking_df = filter_by_sale_owner(raw_other_tracking_df)
 
     if not other_tracking_df.empty:
         col_o1, col_o2, col_o3 = st.columns([2, 2, 6])
