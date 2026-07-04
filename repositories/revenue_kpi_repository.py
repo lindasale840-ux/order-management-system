@@ -1,141 +1,41 @@
 import pandas as pd
 import streamlit as st
-
-from sqlalchemy import text
-
-from database.connection import engine
-
+# Import 2 hàm tiện ích từ file pg_database của bạn
+from database.pg_database import query_pg_to_dataframe, execute_pg_query
 
 class RevenueKPIRepository:
 
     @staticmethod
     @st.cache_data(ttl=30)
     def get_all():
-
-        return pd.read_sql(
-
-            """
-
-            SELECT *
-
-            FROM revenue_kpi
-
-            ORDER BY year DESC
-
-            """,
-
-            engine
-        )
+        query = """
+        SELECT *
+        FROM revenue_kpi
+        ORDER BY year DESC
+        """
+        return query_pg_to_dataframe(query)
 
     @staticmethod
-    def upsert_kpi(
-
-        year,
-        month,
-        target_amount
-
-    ):
-
-        with engine.begin() as conn:
-
-            conn.execute(
-
-                text("""
-
-                INSERT INTO revenue_kpi(
-
-                    year,
-                    month,
-                    target_amount
-
-                )
-
-                VALUES(
-
-                    :year,
-                    :month,
-                    :target_amount
-
-                )
-
-                ON CONFLICT(year, month)
-
-                DO UPDATE SET
-
-                    target_amount=excluded.target_amount
-
-                """),
-
-                {
-
-                    "year": year,
-                    "month": month,
-                    "target_amount": target_amount
-
-                }
-            )
-
+    def upsert_kpi(year, month, target_amount):
+        # Giữ nguyên cú pháp ON CONFLICT thần thánh của bạn, chỉ đổi tên biến thành %s
+        query = """
+        INSERT INTO revenue_kpi(year, month, target_amount)
+        VALUES(%s, %s, %s)
+        ON CONFLICT(year, month)
+        DO UPDATE SET target_amount = EXCLUDED.target_amount
+        """
+        
+        execute_pg_query(query, (year, month, target_amount))
+        
+        # Xóa cache của Streamlit sau khi cập nhật dữ liệu để giao diện hiển thị số mới ngay
         st.cache_data.clear()
 
     @staticmethod
-    def get_by_year(
-
-        year
-
-    ):
-
-        return pd.read_sql(
-
-            text("""
-
-            SELECT *
-
-            FROM revenue_kpi
-
-            WHERE year=:year
-
-            """),
-
-            engine,
-
-            params={
-
-                "year": year
-
-            }
-        )
+    def get_by_year(year):
+        query = "SELECT * FROM revenue_kpi WHERE year = %s"
+        return query_pg_to_dataframe(query, (year,))
     
     @staticmethod
-    def get_by_year_month(
-
-        year,
-
-        month
-
-    ):
-
-        return pd.read_sql(
-
-            text("""
-
-            SELECT *
-
-            FROM revenue_kpi
-
-            WHERE year=:year
-
-            AND month=:month
-
-            """),
-
-            engine,
-
-            params={
-
-                "year": year,
-
-                "month": month
-
-            }
-
-        )
+    def get_by_year_month(year, month):
+        query = "SELECT * FROM revenue_kpi WHERE year = %s AND month = %s"
+        return query_pg_to_dataframe(query, (year, month))
