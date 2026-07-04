@@ -5,43 +5,53 @@ import warnings
 warnings.filterwarnings("ignore", category=UserWarning)
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-from repositories.error_log_repository import ErrorLogRepository
+from repositories.document_tracking_repository import DocumentTrackingRepository
 
-def run_error_log_test():
-    print("🚀 Bắt đầu quá trình kiểm tra độc lập ErrorLogRepository...")
+def run_tracking_test():
+    print("🚀 Bắt đầu quá trình kiểm tra độc lập DocumentTrackingRepository...")
     
-    # 1. Thêm thử nghiệm một lỗi mới
-    print("\n📝 Đang thêm thử nghiệm log lỗi vào hệ thống...")
+    # 1. Thêm một tracking test mới
+    test_order = "TEST-ORDER-2026"
+    print(f"\n📝 Đang tạo dữ liệu tracking thử nghiệm cho đơn hàng: {test_order}...")
     try:
-        ErrorLogRepository.add_error(
-            page_name="Dashboard_Test",
-            error_message="Connection timed out during independent testing"
+        DocumentTrackingRepository.add_tracking(
+            order_number=test_order,
+            sent_date="2026-07-01",
+            received_date=None,  # Để trống để test chức năng pending
+            note="Test tracking doc on Postgres"
         )
-        print("✅ Thêm lỗi thành công!")
+        print("✅ Thêm dữ liệu tracking thành công!")
     except Exception as e:
-        print(f"❌ Lỗi khi thêm log lỗi: {e}")
+        print(f"❌ Lỗi khi thêm tracking: {e}")
         return
 
-    # 2. Đọc lại danh sách xem có lấy được dữ liệu ra không
-    print("\n🔍 Đang truy vấn lại danh sách lỗi từ Postgres...")
-    try:
-        df_errors = ErrorLogRepository.get_errors()
-        if not df_errors.empty:
-            print(f"✅ Lấy dữ liệu thành công! Tổng số lỗi đang lưu: {len(df_errors)} dòng.")
-            print(f"📌 Lỗi mới nhất vừa ghi nhận tại trang: '{df_errors.iloc[0]['page_name']}'")
-        else:
-            print("❌ Lỗi: Bảng error_logs trống rỗng một cách bất thường.")
-            return
-    except Exception as e:
-        print(f"❌ Lỗi khi truy vấn danh sách lỗi: {e}")
-        return
-
-    # 3. Kiểm tra tính năng giới hạn 20 lỗi
-    if len(df_errors) <= 20:
-        print("\n✅ Thành công! Số lượng log lỗi được khống chế tự động luôn dưới hoặc bằng 20 dòng.")
-        print("🎉 FILE ERROR_LOG_REPOSITORY ĐÃ HOÀN TOÀN SẴN SÀNG TRÊN POSTGRES!")
+    # 2. Kiểm tra hàm lấy danh sách pending (chưa nhận)
+    print("\n🔍 Đang test hàm get_pending_return()...")
+    df_pending = DocumentTrackingRepository.get_pending_return()
+    if not df_pending.empty and test_order in df_pending['order_number'].values:
+        print(f"✅ Thành công! Đã tìm thấy đơn hàng {test_order} nằm trong danh sách chờ nhận.")
     else:
-        print(f"\n⚠️ Cảnh báo: Số lượng bản ghi hiện tại ({len(df_errors)}) đang vượt quá giới hạn 20.")
+        print("⚠️ Cảnh báo: Không thấy đơn hàng test trong danh sách pending.")
+
+    # 3. Kiểm tra hàm lấy tracking mới nhất theo đơn hàng cụ thể
+    print(f"\n🔍 Đang test hàm get_latest_by_order() cho đơn {test_order}...")
+    df_latest = DocumentTrackingRepository.get_latest_by_order(test_order)
+    if not df_latest.empty:
+        print(f"✅ Thành công! Ghi nhận ghi chú mới nhất: '{df_latest.iloc[0]['note']}'")
+        tracking_id = int(df_latest.iloc[0]['id'])
+    else:
+        print("❌ Lỗi: Không thể tìm thấy tracking bằng mã đơn hàng vừa tạo.")
+        return
+
+    # 4. Dọn dẹp dữ liệu test bằng hàm xóa
+    print(f"\n🧹 Đang dọn dẹp dữ liệu test (Xóa tracking ID: {tracking_id})...")
+    try:
+        DocumentTrackingRepository.delete_tracking(tracking_id)
+        print("✅ Đã xóa bản ghi thử nghiệm thành công.")
+    except Exception as e:
+        print(f"❌ Lỗi khi xóa bản ghi thử nghiệm: {e}")
+
+    print("\n🎉 HOÀN THÀNH KIỂM TRA! DOCUMENT TRACKING REPOSITORY HOẠT ĐỘNG HOÀN HẢO!")
 
 if __name__ == "__main__":
-    run_error_log_test()
+    run_tracking_test()
