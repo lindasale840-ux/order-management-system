@@ -16,7 +16,7 @@ class OrderRepository:
             pass  # Cột đã tồn tại hoặc bảng chưa tạo, bỏ qua để hệ thống không crash
 
     @staticmethod
-    @st.cache_data(ttl=30)
+    #@st.cache_data(ttl=30)
     def get_all_orders():
         OrderRepository.init_payment_notification_column()
         query = """
@@ -29,7 +29,7 @@ class OrderRepository:
         return convert_utc_columns(df)
 
     @staticmethod
-    @st.cache_data(ttl=30)
+    #@st.cache_data(ttl=30)
     def get_customers():
         query = """
         SELECT DISTINCT customer_name
@@ -39,7 +39,7 @@ class OrderRepository:
         return query_pg_to_dataframe(query)
 
     @staticmethod
-    @st.cache_data(ttl=30)
+    #@st.cache_data(ttl=30)
     def get_orders_by_customer(customer_name):
         OrderRepository.init_payment_notification_column()
         query = """
@@ -65,31 +65,44 @@ class OrderRepository:
         disable_payment_notification=0  
     ):
         OrderRepository.init_payment_notification_column()
-        query = """
-        INSERT INTO orders (
-            customer_name, order_number, measurement_date, cert_status,               
-            sale_owner, created_by, disable_calibration_notification, 
-            disable_document_notification, disable_payment_notification              
-        )
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
-        ON CONFLICT(order_number)
-        DO UPDATE SET
-            customer_name = EXCLUDED.customer_name,
-            measurement_date = EXCLUDED.measurement_date,
-            cert_status = EXCLUDED.cert_status,              
-            sale_owner = EXCLUDED.sale_owner,
-            created_by = EXCLUDED.created_by,
-            disable_calibration_notification = EXCLUDED.disable_calibration_notification,
-            disable_document_notification = EXCLUDED.disable_document_notification,
-            disable_payment_notification = EXCLUDED.disable_payment_notification,              
-            updated_at = CURRENT_TIMESTAMP
-        """
         
-        params = (
-            customer_name, order_number, measurement_date, cert_status,
-            sale_owner, created_by, disable_calibration_notification,
-            disable_document_notification, disable_payment_notification
-        )
+        calib_val = 1 if disable_calibration_notification else 0
+        doc_val = 1 if disable_document_notification else 0
+        pay_val = 1 if disable_payment_notification else 0
+
+        # Kiểm tra trùng lặp trước
+        check_query = "SELECT 1 FROM orders WHERE order_number = %s LIMIT 1;"
+        existing = execute_pg_query(check_query, (order_number,))
+
+        if existing:
+            query = """
+            UPDATE orders 
+            SET 
+                customer_name = %s, measurement_date = %s, cert_status = %s,
+                sale_owner = %s, created_by = %s, disable_calibration_notification = %s,
+                disable_document_notification = %s, disable_payment_notification = %s,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE order_number = %s;
+            """
+            params = (
+                customer_name, measurement_date, cert_status,
+                sale_owner, created_by, calib_val, doc_val, pay_val,
+                order_number
+            )
+        else:
+            query = """
+            INSERT INTO orders (
+                customer_name, order_number, measurement_date, cert_status,               
+                sale_owner, created_by, disable_calibration_notification, 
+                disable_document_notification, disable_payment_notification              
+            )
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s);
+            """
+            params = (
+                customer_name, order_number, measurement_date, cert_status,
+                sale_owner, created_by, calib_val, doc_val, pay_val
+            )
+        
         execute_pg_query(query, params)
         st.cache_data.clear()
 

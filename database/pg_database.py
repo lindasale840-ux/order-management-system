@@ -47,42 +47,74 @@ def init_pg_db():
 
 def query_pg_to_dataframe(sql, params=None):
     """
-    Hàm đọc dữ liệu từ Postgres và trả về một chiếc Pandas Dataframe.
-    Thay thế hoàn toàn cho lệnh `pd.read_sql_query(sql, conn_sqlite)` cũ.
+    Hàm đọc dữ liệu từ Postgres và trả về một chiếc Pandas Dataframe chuẩn chỉnh.
+    Tận dụng execute_pg_query để đảm bảo kết nối và tham số chạy hoàn hảo.
     """
     import pandas as pd
-    conn = get_pg_connection()
-    if not conn:
-        return pd.DataFrame()
+    
     try:
-        # Sử dụng pd.read_sql_query trực tiếp với kết nối Postgres
-        df = pd.read_sql_query(sql, conn, params=params)
-        return df
+        # 1. Lấy dữ liệu thô từ hàm execute_pg_query ổn định của chúng ta
+        data = execute_pg_query(sql, params)
+        
+        # 2. Tạo kết nối tạm để lấy chuẩn tên các cột dữ liệu tránh lỗi hiển thị trên AgGrid
+        conn = get_pg_connection()
+        cur = conn.cursor()
+        cur.execute(sql, params)
+        colnames = [desc[0] for desc in cur.description] if cur.description else []
+        cur.close()
+        conn.close()
+        
+        # 3. Đóng gói thành DataFrame
+        if data and colnames:
+            return pd.DataFrame(data, columns=colnames)
+        elif data:
+            return pd.DataFrame(data)
+        else:
+            return pd.DataFrame()
+            
     except Exception as e:
         print(f"❌ Lỗi truy vấn Dataframe từ Postgres: {e}")
         return pd.DataFrame()
-    finally:
-        conn.close()
 
-def execute_pg_query(sql, params=None):
-    """
-    Hàm thực thi các câu lệnh thay đổi dữ liệu (INSERT, UPDATE, DELETE).
-    Thay thế cho cursor.execute() và conn.commit() cũ.
-    """
-    conn = get_pg_connection()
-    if not conn:
-        return False
+def execute_pg_query(query, params=None):
+    import pandas as pd
+    
+    # 1. TỰ ĐỘNG ÉP KIỂU CHO TOÀN HỆ THỐNG:
+    if params:
+        new_params = []
+        for p in params:
+            if isinstance(p, bool):
+                new_params.append(1 if p else 0)
+            elif pd.isna(p):  
+                new_params.append(None)
+            else:
+                new_params.append(p)
+        params = tuple(new_params)
+
+    conn = None
     try:
-        with conn.cursor() as cursor:
-            cursor.execute(sql, params)
-            conn.commit()
-        return True
+        conn = get_pg_connection() 
+        cur = conn.cursor()
+        cur.execute(query, params)
+        
+        # Lấy dữ liệu nếu đây là câu lệnh SELECT
+        result = None
+        if cur.description: 
+            result = cur.fetchall()
+        
+        # Đảm bảo LUÔN commit để Postgres lưu dữ liệu thực tế
+        conn.commit() 
+        
+        cur.close()
+        return result 
+        
     except Exception as e:
-        conn.rollback()
-        print(f"❌ Lỗi thực thi lệnh SQL trên Postgres: {e}")
-        return False
+        if conn:
+            conn.rollback()
+        raise e 
     finally:
-        conn.close()
+        if conn:
+            conn.close()
         
 def export_pg_backup():
     """Hàm xuất toàn bộ cấu trúc và dữ liệu PostgreSQL thành dạng chuỗi văn bản (SQL Script)"""

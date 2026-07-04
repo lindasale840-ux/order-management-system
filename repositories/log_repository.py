@@ -33,16 +33,15 @@ class LogRepository:
         # Giữ lại 5000 dòng mới nhất bằng cách xóa các dòng có id 
         # nhỏ hơn id nhỏ nhất của top 5000 dòng đầu tiên.
         # ========================================================
+        # Cú pháp chuẩn Postgres: Giữ lại N dòng log mới nhất, xóa toàn bộ các dòng cũ hơn
         query_purge = f"""
         DELETE FROM logs
-        WHERE id < COALESCE((
-            SELECT min_id FROM (
-                SELECT id AS min_id 
-                FROM logs 
-                ORDER BY id DESC 
-                LIMIT {LogRepository.MAX_LOG_ROWS}
-            ) as tmp
-        ), 0);
+        WHERE id NOT IN (
+            SELECT id 
+            FROM logs 
+            ORDER BY id DESC 
+            LIMIT {LogRepository.MAX_LOG_ROWS}
+        );
         """
         execute_pg_query(query_purge)
 
