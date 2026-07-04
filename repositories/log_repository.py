@@ -1,13 +1,7 @@
 import pandas as pd
-
 import streamlit as st
-
-from sqlalchemy import text
-
-from database.connection import engine
-
+from database.pg_database import query_pg_to_dataframe, execute_pg_query
 from utils.datetime_utils import convert_utc_columns
-
 
 class LogRepository:
 
@@ -21,94 +15,56 @@ class LogRepository:
         description,
         username="SYSTEM"
     ):
-        
-        username = st.session_state.get(
-            "username",
-            "SYSTEM"
-        )
+        # Lấy username từ session_state của Streamlit nếu có
+        username = st.session_state.get("username", username)
 
-        query = text("""
+        query_insert = """
         INSERT INTO logs (
-            username,          
-            action,
-            customer_name,
-            order_number,
-            description
+            username, action, customer_name, order_number, description
         )
+        VALUES (%s, %s, %s, %s, %s)
+        """
+        
+        params_insert = (username, action, customer_name, order_number, description)
+        execute_pg_query(query_insert, params_insert)
 
-        VALUES (
-            :username,         
-            :action,
-            :customer_name,
-            :order_number,
-            :description
-        )
-        """)
-
-        with engine.begin() as conn:
-
-            conn.execute(
-                query,
-                {
-                    "username": username,
-                    "action": action,
-                    "customer_name": customer_name,
-                    "order_number": order_number,
-                    "description": description
-                }
-            )
-
-            # =========================
-            # AUTO PURGE
-            # KEEP ONLY NEWEST 5000
-            # =========================
-
-            conn.execute(text(f"""
-            DELETE FROM logs
-            WHERE id NOT IN (
-
-                SELECT id
-                FROM logs
-                ORDER BY id DESC
+        # ========================================================
+        # AUTO PURGE - PHIÊN BẢN TỐI ƯU CHO POSTGRESQL
+        # Giữ lại 5000 dòng mới nhất bằng cách xóa các dòng có id 
+        # nhỏ hơn id nhỏ nhất của top 5000 dòng đầu tiên.
+        # ========================================================
+        query_purge = f"""
+        DELETE FROM logs
+        WHERE id < COALESCE((
+            SELECT min_id FROM (
+                SELECT id AS min_id 
+                FROM logs 
+                ORDER BY id DESC 
                 LIMIT {LogRepository.MAX_LOG_ROWS}
-
-            )
-            """))
+            ) as tmp
+        ), 0);
+        """
+        execute_pg_query(query_purge)
 
     @staticmethod
     def get_logs():
-
         query = """
         SELECT *
         FROM logs
         ORDER BY id DESC
         """
-
-        df = pd.read_sql(
-            query,
-            engine
-        )
-        
+        df = query_pg_to_dataframe(query)
         return convert_utc_columns(df)
 
     @staticmethod
     def delete_all_logs():
-
-        with engine.begin() as conn:
-
-            conn.execute(
-                text(
-                    "DELETE FROM logs"
-                )
-            )
+        query = "DELETE FROM logs"
+        execute_pg_query(query)
 
     @staticmethod
     def get_log_count():
-
-        with engine.begin() as conn:
-
-            return conn.execute(
-                text(
-                    "SELECT COUNT(*) FROM logs"
-                )
-            ).scalar()
+        query = "SELECT COUNT(*) as count FROM logs"
+        df = query_pg_to_dataframe(query)
+        if not df.empty:
+            return int(df.iloc[0]['count'])
+        return 0

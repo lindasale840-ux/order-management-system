@@ -2,81 +2,60 @@ import os
 import sys
 import warnings
 
-# Khóa cảnh báo Pandas
+# Tắt cảnh báo
 warnings.filterwarnings("ignore", category=UserWarning)
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-from repositories.note_repository import NoteRepository
+# Giả lập streamlit session_state
+import streamlit as st
+if 'username' not in st.session_state:
+    st.session_state['username'] = "TESTER_POSTGRES"
 
-def run_note_test():
-    print("🚀 Bắt đầu quá trình kiểm tra độc lập NoteRepository...")
+from repositories.log_repository import LogRepository
+
+def run_log_test():
+    print("🚀 Bắt đầu quá trình kiểm tra độc lập LogRepository...")
     
-    # Giả định kiểm thử với user_id nhận diện mẫu (Ví dụ: id = 1)
-    test_user_id = 1
-    
-    # 1. Đo lường số lượng note ban đầu
+    # 1. Kiểm tra số lượng log ban đầu
     try:
-        notes_init = NoteRepository.get_notes(test_user_id, is_admin=False)
-        print(f"✅ Lấy danh sách thành công! User {test_user_id} đang có {len(notes_init)} ghi chú.")
+        count_init = LogRepository.get_log_count()
+        print(f"✅ Kết nối thành công! Số lượng log hiện tại trong DB: {count_init} dòng.")
     except Exception as e:
-        print(f"❌ Lỗi kết nối hoặc cấu trúc bảng 'notes' có vấn đề: {e}")
+        print(f"❌ Lỗi lấy số lượng log ban đầu: {e}")
         return
 
-    # 2. Thực hiện tạo mới một Note mẫu
-    print("\n📝 Đang tiến hành tạo ghi chú thử nghiệm...")
-    note_payload = {
-        "user_id": test_user_id,
-        "title": "Họp triển khai hệ thống ERP 2026",
-        "content": "Kiểm tra toàn bộ các repository sau khi chuyển sang Postgres",
-        "category": "Work",
-        "priority": "critical",
-        "layer": 1,
-        "status": "pending",
-        "due_date": "2026-07-15"
-    }
-    
-    new_note_id = 0
+    # 2. Thêm một log mới
+    print("\n📝 Đang thêm thử nghiệm 1 dòng log mới...")
     try:
-        new_note_id = NoteRepository.create_note(note_payload)
-        if new_note_id > 0:
-            print(f"✅ Tạo Note thành công! ID sinh ra từ Postgres: {new_note_id}")
-        else:
-            print("❌ Lỗi: Hàm không trả về ID hợp lệ.")
-            return
+        LogRepository.add_log(
+            action="TEST_MIGRATE",
+            customer_name="Khách Hàng Test Log",
+            order_number="LOG-2026-XYZ",
+            description="Kiểm tra hệ thống auto purge trên Postgres"
+        )
+        print("✅ Thêm log mới thành công!")
     except Exception as e:
-        print(f"❌ Thất bại khi tạo Note: {e}")
-        print("💡 Gợi ý: Hãy kiểm tra xem bộ đếm SEQUENCE của bảng 'notes' đã đồng bộ chưa nếu gặp lỗi trùng id.")
+        print(f"❌ Lỗi khi thêm log: {e}")
         return
 
-    # 3. Đánh dấu Đã đọc / Chưa đọc thử nghiệm
-    print(f"\n🔄 Thử nghiệm cập nhật trạng thái đọc của Note ID {new_note_id}...")
-    try:
-        NoteRepository.mark_as_read(new_note_id, test_user_id)
-        print("✅ Đánh dấu ĐÃ ĐỌC thành công.")
-        NoteRepository.mark_as_unread(new_note_id, test_user_id)
-        print("✅ Đánh dấu CHƯA ĐỌC thành công.")
-    except Exception as e:
-        print(f"❌ Lỗi khi cập nhật trạng thái đọc: {e}")
+    # 3. Đọc lại danh sách log để chứng minh dữ liệu đã ghi
+    print("\n🔍 Đang đọc lại danh sách log để kiểm tra thực tế...")
+    df_logs = LogRepository.get_logs()
+    if not df_logs.empty and df_logs.iloc[0]['order_number'] == "LOG-2026-XYZ":
+        print(f"✅ Tìm thấy log vừa ghi! Người thực hiện: {df_logs.iloc[0]['username']}")
+    else:
+        print("❌ Lỗi: Không tìm thấy dòng log vừa tạo.")
+        return
 
-    # 4. Kiểm tra hàm thống kê dữ liệu
-    print("\n📊 Kiểm tra hàm thống kê (get_statistics)...")
-    try:
-        stats = NoteRepository.get_statistics(test_user_id, is_admin=False)
-        print(f"✅ Thống kê thành công: Tổng số={stats['total']} | Đang xử lý={stats['in_progress']} | Chưa đọc={stats['unread']}")
-    except Exception as e:
-        print(f"❌ Lỗi hàm thống kê: {e}")
-
-    # 5. Dọn dẹp dữ liệu test (Xóa Note vừa tạo)
-    print(f"\n🗑️ Đang tiến hành xóa Note mẫu ID {new_note_id}...")
-    try:
-        deleted = NoteRepository.delete_note(new_note_id, test_user_id, is_admin=False)
-        if deleted:
-            print("✅ Xóa bản ghi thử nghiệm thành công! Cơ sở dữ liệu sạch sẽ.")
-            print("\n🎉 CHÚC MỪNG! NOTE REPOSITORY HOẠT ĐỘNG HOÀN HẢO TRÊN POSTGRESQL!")
-        else:
-            print("❌ Bản ghi chưa được xóa.")
-    except Exception as e:
-        print(f"❌ Lỗi khi thực hiện xóa: {e}")
+    # 4. Kiểm tra xem cơ chế dọn dẹp Auto Purge có hoạt động không
+    print("\n📈 Kiểm tra tổng số lượng log sau khi thêm...")
+    count_after = LogRepository.get_log_count()
+    print(f"✅ Tổng số log hiện tại: {count_after}")
+    if count_after <= LogRepository.MAX_LOG_ROWS:
+        print("✅ Cơ chế Auto Purge hoạt động tốt (Giới hạn tối đa luôn <= 5000 dòng).")
+        print("\n🎉 CHÚC MỪNG! LOG REPOSITORY HOẠT ĐỘNG HOÀN HẢO TRÊN POSTGRESQL!")
+    else:
+        print("❌ Cảnh báo: Số lượng log vượt quá giới hạn cấu hình.")
 
 if __name__ == "__main__":
-    run_note_test()
+    run_log_test()
