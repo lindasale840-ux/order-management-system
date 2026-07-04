@@ -1,241 +1,97 @@
 import pandas as pd
 import streamlit as st
-
-from sqlalchemy import text
-
-from database.connection import engine
-
+from database.pg_database import query_pg_to_dataframe, execute_pg_query
 from utils.datetime_utils import convert_utc_columns
-
 
 class PaymentRepository:
 
     @staticmethod
     @st.cache_data(ttl=30)
-
     def get_all_payments():
-
         query = """
-
         SELECT *
-
         FROM payments
-
         ORDER BY id DESC
-
         """
-
-        df =  pd.read_sql(
-            query,
-            engine
-        )
-        
+        df = query_pg_to_dataframe(query)
         return convert_utc_columns(df)
 
     @staticmethod
     def upsert_payment(
-
         order_number,
-
         invoice_date,
-
         invoice_group,
-
         payment_terms,
-
         payment_status,
-
         total,
-
         commission_percent,
-
         commission_actual,
-
         note,
-        
         invoice_created_by
     ):
-
-        with engine.begin() as conn:
-
-            conn.execute(text("""
-
-            INSERT INTO payments (
-
-                order_number,
-
-                invoice_date,
-                              
-                invoice_group,              
-
-                payment_terms,
-
-                payment_status,
-
-                total,
-
-                commission_percent,
-
-                commission_actual,
-
-                note,
-                
-                invoice_created_by
-
-            )
-
-            VALUES (
-
-                :order_number,
-
-                :invoice_date,
-                              
-                :invoice_group,             
-
-                :payment_terms,
-
-                :payment_status,
-
-                :total,
-
-                :commission_percent,
-
-                :commission_actual,
-
-                :note,
-                
-                :invoice_created_by
-            )
-
-            ON CONFLICT(order_number)
-
-            DO UPDATE SET
-
-                invoice_date=excluded.invoice_date,
-                              
-                invoice_group=excluded.invoice_group,              
-
-                payment_terms=excluded.payment_terms,
-
-                payment_status=excluded.payment_status,
-
-                total=excluded.total,
-
-                commission_percent=excluded.commission_percent,
-
-                commission_actual=excluded.commission_actual,
-
-                note=excluded.note,
-                
-                invoice_created_by=excluded.invoice_created_by,
-
-                updated_at=CURRENT_TIMESTAMP
-
-            """),
-
-            {
-
-                "order_number": order_number,
-
-                "invoice_date": invoice_date,
-
-                "invoice_group": invoice_group,
-
-                "payment_terms": payment_terms,
-
-                "payment_status": payment_status,
-
-                "total": total,
-
-                "commission_percent": commission_percent,
-
-                "commission_actual": commission_actual,
-
-                "note": note,
-                
-                "invoice_created_by": invoice_created_by
-            })
-
+        # Chuyển đổi tên biến từ :name sang %s. Cú pháp ON CONFLICT giữ nguyên.
+        query = """
+        INSERT INTO payments (
+            order_number,
+            invoice_date,
+            invoice_group,             
+            payment_terms,
+            payment_status,
+            total,
+            commission_percent,
+            commission_actual,
+            note,
+            invoice_created_by
+        )
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        ON CONFLICT(order_number)
+        DO UPDATE SET
+            invoice_date = EXCLUDED.invoice_date,
+            invoice_group = EXCLUDED.invoice_group,              
+            payment_terms = EXCLUDED.payment_terms,
+            payment_status = EXCLUDED.payment_status,
+            total = EXCLUDED.total,
+            commission_percent = EXCLUDED.commission_percent,
+            commission_actual = EXCLUDED.commission_actual,
+            note = EXCLUDED.note,
+            invoice_created_by = EXCLUDED.invoice_created_by,
+            updated_at = CURRENT_TIMESTAMP
+        """
+        
+        params = (
+            order_number, invoice_date, invoice_group, payment_terms, 
+            payment_status, total, commission_percent, commission_actual, 
+            note, invoice_created_by
+        )
+        execute_pg_query(query, params)
         st.cache_data.clear()
         
-    
     @staticmethod
-    def bulk_transfer_invoice_owner(
-        old_owner,
-        new_owner
-    ):
-
-        with engine.begin() as conn:
-
-            conn.execute(
-
-                text("""
-
-                UPDATE payments
-
-                SET invoice_created_by = :new_owner
-
-                WHERE invoice_created_by = :old_owner
-
-                """),
-
-                {
-
-                    "old_owner": old_owner,
-
-                    "new_owner": new_owner
-
-                }
-
-            )
-
+    def bulk_transfer_invoice_owner(old_owner, new_owner):
+        query = """
+        UPDATE payments
+        SET invoice_created_by = %s
+        WHERE invoice_created_by = %s
+        """
+        execute_pg_query(query, (new_owner, old_owner))
         st.cache_data.clear()  
         
     @staticmethod
-    def transfer_invoice_owner_by_orders(
-
-        order_numbers,
-
-        new_assistant
-
-    ):
-
+    def transfer_invoice_owner_by_orders(order_numbers, new_assistant):
         if not order_numbers:
-
             return
 
-        placeholders = ",".join(
+        # PostgreSQL sử dụng %s làm placeholder
+        placeholders = ",".join(["%s"] * len(order_numbers))
+        
+        query = f"""
+        UPDATE payments
+        SET invoice_created_by = %s
+        WHERE order_number IN ({placeholders})
+        """
+        
+        # Tạo tuple tham số: Biến new_assistant đứng đầu, sau đó unpack toàn bộ danh sách order_numbers ra phía sau
+        params = (new_assistant, *order_numbers)
 
-            [f":p{i}" for i in range(len(order_numbers))]
-
-        )
-
-        params = {
-
-            f"p{i}": order_numbers[i]
-
-            for i in range(len(order_numbers))
-
-        }
-
-        params["new_assistant"] = new_assistant
-
-        with engine.begin() as conn:
-
-            conn.execute(
-
-                text(f"""
-
-                UPDATE payments
-
-                SET invoice_created_by = :new_assistant
-
-                WHERE order_number IN ({placeholders})
-
-                """),
-
-                params
-
-            )
-
-        st.cache_data.clear()      
+        execute_pg_query(query, params)
+        st.cache_data.clear()
