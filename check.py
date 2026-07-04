@@ -2,85 +2,81 @@ import os
 import sys
 import warnings
 
-# Tắt cảnh báo phiền phức từ Pandas
+# Khóa cảnh báo Pandas
 warnings.filterwarnings("ignore", category=UserWarning)
-
-# Khởi tạo đường dẫn module dự án
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-# Giả lập các hàm Streamlit cache
-import streamlit as st
-st.cache_data = lambda *args, **kwargs: lambda func: func
-st.cache_data.clear = lambda: None
+from repositories.note_repository import NoteRepository
 
-from repositories.order_repository import OrderRepository
-
-def run_order_test():
-    print("🚀 Bắt đầu quá trình kiểm tra độc lập OrderRepository...")
+def run_note_test():
+    print("🚀 Bắt đầu quá trình kiểm tra độc lập NoteRepository...")
     
-    # 1. Đồng bộ và kiểm tra số lượng bản ghi hiện tại
-    try:
-        df_init = OrderRepository.get_all_orders()
-        print(f"✅ Kết nối và lấy danh sách đơn hàng thành công! Số lượng hiện tại: {len(df_init)} đơn.")
-    except Exception as e:
-        print(f"❌ Lỗi khi lấy danh sách đơn hàng ban đầu: {e}")
-        return
-
-    # Mẫu dữ liệu kiểm thử độc lập
-    test_order_num = "TEST-POSTGRES-2026"
+    # Giả định kiểm thử với user_id nhận diện mẫu (Ví dụ: id = 1)
+    test_user_id = 1
     
-    # 2. Thử nghiệm hàm Upsert (Thêm mới)
-    print(f"\n📝 Đang thực hiện Upsert đơn hàng kiểm thử: {test_order_num}...")
+    # 1. Đo lường số lượng note ban đầu
     try:
-        OrderRepository.upsert_order(
-            customer_name="Công Ty Thử Nghiệm Thiết Bị",
-            order_number=test_order_num,
-            measurement_date="2026-07-04",
-            cert_status="Chưa cấp",
-            sale_owner="Sale Test Postgres",
-            created_by="Hệ thống Test",
-            disable_calibration_notification=0,
-            disable_document_notification=1,
-            disable_payment_notification=0
-        )
-        print("✅ Upsert (Thêm mới) đơn hàng thành công!")
+        notes_init = NoteRepository.get_notes(test_user_id, is_admin=False)
+        print(f"✅ Lấy danh sách thành công! User {test_user_id} đang có {len(notes_init)} ghi chú.")
     except Exception as e:
-        print(f"❌ Lỗi trong quá trình Upsert: {e}")
-        print("💡 Gợi ý: Khả năng cao cột 'order_number' chưa được set ràng buộc UNIQUE trên Postgres.")
-        return  # Dừng chương trình luôn nếu lỗi, không chạy xuống dưới nữa
-
-    # 3. Tìm kiếm chính xác đơn hàng vừa tạo để chứng minh dữ liệu đã ghi thực tế
-    print(f"\n🔍 Tìm kiếm đơn hàng mã {test_order_num}...")
-    df_check = OrderRepository.get_by_order_number(test_order_num)
-    if not df_check.empty:
-        print("✅ Đã tìm thấy đơn hàng trong cơ sở dữ liệu Postgres!")
-        print(f"   Khách hàng: {df_check.iloc[0]['customer_name']} | Sale: {df_check.iloc[0]['sale_owner']}")
-    else:
-        print("❌ Lỗi: Không tìm thấy dữ liệu trong Database dù không crash!")
+        print(f"❌ Lỗi kết nối hoặc cấu trúc bảng 'notes' có vấn đề: {e}")
         return
 
-    # 4. Thử nghiệm chức năng chuyển nhượng chủ sở hữu theo danh sách (IN clause)
-    print(f"\n🔄 Thử nghiệm tính năng bàn giao đơn hàng (mệnh đề IN)...")
+    # 2. Thực hiện tạo mới một Note mẫu
+    print("\n📝 Đang tiến hành tạo ghi chú thử nghiệm...")
+    note_payload = {
+        "user_id": test_user_id,
+        "title": "Họp triển khai hệ thống ERP 2026",
+        "content": "Kiểm tra toàn bộ các repository sau khi chuyển sang Postgres",
+        "category": "Work",
+        "priority": "critical",
+        "layer": 1,
+        "status": "pending",
+        "due_date": "2026-07-15"
+    }
+    
+    new_note_id = 0
     try:
-        OrderRepository.transfer_sale_owner_by_orders([test_order_num], "Bàn Giao Thao Tác")
-        df_check_transferred = OrderRepository.get_by_order_number(test_order_num)
-        print(f"✅ Bàn giao thành công! Sale hiện tại: {df_check_transferred.iloc[0]['sale_owner']}")
-    except Exception as e:
-        print(f"❌ Lỗi khi thực hiện bàn giao đơn hàng: {e}")
-        return
-
-    # 5. Dọn dẹp dữ liệu kiểm thử (Xóa Cascade) để khôi phục DB sạch sẽ
-    print(f"\n🗑️ Tiến hành xóa Cascade dữ liệu mẫu {test_order_num}...")
-    try:
-        OrderRepository.delete_order_cascade(test_order_num)
-        df_final_check = OrderRepository.get_by_order_number(test_order_num)
-        if df_final_check.empty:
-            print("✅ Xóa dữ liệu mẫu Cascade thành công! Cơ sở dữ liệu sạch sẽ.")
-            print("\n🎉 CHÚC MỪNG! ORDER REPOSITORY HOẠT ĐỘNG HOÀN HẢO TRÊN POSTGRESQL!")
+        new_note_id = NoteRepository.create_note(note_payload)
+        if new_note_id > 0:
+            print(f"✅ Tạo Note thành công! ID sinh ra từ Postgres: {new_note_id}")
         else:
-            print("❌ Lỗi: Bản ghi kiểm thử vẫn tồn tại sau khi chạy lệnh xóa.")
+            print("❌ Lỗi: Hàm không trả về ID hợp lệ.")
+            return
     except Exception as e:
-        print(f"❌ Lỗi trong quá trình xóa dữ liệu mẫu: {e}")
+        print(f"❌ Thất bại khi tạo Note: {e}")
+        print("💡 Gợi ý: Hãy kiểm tra xem bộ đếm SEQUENCE của bảng 'notes' đã đồng bộ chưa nếu gặp lỗi trùng id.")
+        return
+
+    # 3. Đánh dấu Đã đọc / Chưa đọc thử nghiệm
+    print(f"\n🔄 Thử nghiệm cập nhật trạng thái đọc của Note ID {new_note_id}...")
+    try:
+        NoteRepository.mark_as_read(new_note_id, test_user_id)
+        print("✅ Đánh dấu ĐÃ ĐỌC thành công.")
+        NoteRepository.mark_as_unread(new_note_id, test_user_id)
+        print("✅ Đánh dấu CHƯA ĐỌC thành công.")
+    except Exception as e:
+        print(f"❌ Lỗi khi cập nhật trạng thái đọc: {e}")
+
+    # 4. Kiểm tra hàm thống kê dữ liệu
+    print("\n📊 Kiểm tra hàm thống kê (get_statistics)...")
+    try:
+        stats = NoteRepository.get_statistics(test_user_id, is_admin=False)
+        print(f"✅ Thống kê thành công: Tổng số={stats['total']} | Đang xử lý={stats['in_progress']} | Chưa đọc={stats['unread']}")
+    except Exception as e:
+        print(f"❌ Lỗi hàm thống kê: {e}")
+
+    # 5. Dọn dẹp dữ liệu test (Xóa Note vừa tạo)
+    print(f"\n🗑️ Đang tiến hành xóa Note mẫu ID {new_note_id}...")
+    try:
+        deleted = NoteRepository.delete_note(new_note_id, test_user_id, is_admin=False)
+        if deleted:
+            print("✅ Xóa bản ghi thử nghiệm thành công! Cơ sở dữ liệu sạch sẽ.")
+            print("\n🎉 CHÚC MỪNG! NOTE REPOSITORY HOẠT ĐỘNG HOÀN HẢO TRÊN POSTGRESQL!")
+        else:
+            print("❌ Bản ghi chưa được xóa.")
+    except Exception as e:
+        print(f"❌ Lỗi khi thực hiện xóa: {e}")
 
 if __name__ == "__main__":
-    run_order_test()
+    run_note_test()
