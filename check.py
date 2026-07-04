@@ -2,60 +2,46 @@ import os
 import sys
 import warnings
 
-# Tắt cảnh báo
 warnings.filterwarnings("ignore", category=UserWarning)
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-# Giả lập streamlit session_state
-import streamlit as st
-if 'username' not in st.session_state:
-    st.session_state['username'] = "TESTER_POSTGRES"
+from repositories.error_log_repository import ErrorLogRepository
 
-from repositories.log_repository import LogRepository
-
-def run_log_test():
-    print("🚀 Bắt đầu quá trình kiểm tra độc lập LogRepository...")
+def run_error_log_test():
+    print("🚀 Bắt đầu quá trình kiểm tra độc lập ErrorLogRepository...")
     
-    # 1. Kiểm tra số lượng log ban đầu
+    # 1. Thêm thử nghiệm một lỗi mới
+    print("\n📝 Đang thêm thử nghiệm log lỗi vào hệ thống...")
     try:
-        count_init = LogRepository.get_log_count()
-        print(f"✅ Kết nối thành công! Số lượng log hiện tại trong DB: {count_init} dòng.")
-    except Exception as e:
-        print(f"❌ Lỗi lấy số lượng log ban đầu: {e}")
-        return
-
-    # 2. Thêm một log mới
-    print("\n📝 Đang thêm thử nghiệm 1 dòng log mới...")
-    try:
-        LogRepository.add_log(
-            action="TEST_MIGRATE",
-            customer_name="Khách Hàng Test Log",
-            order_number="LOG-2026-XYZ",
-            description="Kiểm tra hệ thống auto purge trên Postgres"
+        ErrorLogRepository.add_error(
+            page_name="Dashboard_Test",
+            error_message="Connection timed out during independent testing"
         )
-        print("✅ Thêm log mới thành công!")
+        print("✅ Thêm lỗi thành công!")
     except Exception as e:
-        print(f"❌ Lỗi khi thêm log: {e}")
+        print(f"❌ Lỗi khi thêm log lỗi: {e}")
         return
 
-    # 3. Đọc lại danh sách log để chứng minh dữ liệu đã ghi
-    print("\n🔍 Đang đọc lại danh sách log để kiểm tra thực tế...")
-    df_logs = LogRepository.get_logs()
-    if not df_logs.empty and df_logs.iloc[0]['order_number'] == "LOG-2026-XYZ":
-        print(f"✅ Tìm thấy log vừa ghi! Người thực hiện: {df_logs.iloc[0]['username']}")
-    else:
-        print("❌ Lỗi: Không tìm thấy dòng log vừa tạo.")
+    # 2. Đọc lại danh sách xem có lấy được dữ liệu ra không
+    print("\n🔍 Đang truy vấn lại danh sách lỗi từ Postgres...")
+    try:
+        df_errors = ErrorLogRepository.get_errors()
+        if not df_errors.empty:
+            print(f"✅ Lấy dữ liệu thành công! Tổng số lỗi đang lưu: {len(df_errors)} dòng.")
+            print(f"📌 Lỗi mới nhất vừa ghi nhận tại trang: '{df_errors.iloc[0]['page_name']}'")
+        else:
+            print("❌ Lỗi: Bảng error_logs trống rỗng một cách bất thường.")
+            return
+    except Exception as e:
+        print(f"❌ Lỗi khi truy vấn danh sách lỗi: {e}")
         return
 
-    # 4. Kiểm tra xem cơ chế dọn dẹp Auto Purge có hoạt động không
-    print("\n📈 Kiểm tra tổng số lượng log sau khi thêm...")
-    count_after = LogRepository.get_log_count()
-    print(f"✅ Tổng số log hiện tại: {count_after}")
-    if count_after <= LogRepository.MAX_LOG_ROWS:
-        print("✅ Cơ chế Auto Purge hoạt động tốt (Giới hạn tối đa luôn <= 5000 dòng).")
-        print("\n🎉 CHÚC MỪNG! LOG REPOSITORY HOẠT ĐỘNG HOÀN HẢO TRÊN POSTGRESQL!")
+    # 3. Kiểm tra tính năng giới hạn 20 lỗi
+    if len(df_errors) <= 20:
+        print("\n✅ Thành công! Số lượng log lỗi được khống chế tự động luôn dưới hoặc bằng 20 dòng.")
+        print("🎉 FILE ERROR_LOG_REPOSITORY ĐÃ HOÀN TOÀN SẴN SÀNG TRÊN POSTGRES!")
     else:
-        print("❌ Cảnh báo: Số lượng log vượt quá giới hạn cấu hình.")
+        print(f"\n⚠️ Cảnh báo: Số lượng bản ghi hiện tại ({len(df_errors)}) đang vượt quá giới hạn 20.")
 
 if __name__ == "__main__":
-    run_log_test()
+    run_error_log_test()
