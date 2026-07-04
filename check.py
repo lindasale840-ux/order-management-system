@@ -2,75 +2,85 @@ import os
 import sys
 import warnings
 
-# Khóa các cảnh báo phiền phức của Pandas để log hiển thị sạch sẽ
+# Tắt cảnh báo phiền phức từ Pandas
 warnings.filterwarnings("ignore", category=UserWarning)
 
-# Đảm bảo Python tìm thấy các module trong dự án của bạn
+# Khởi tạo đường dẫn module dự án
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-# Giả lập streamlit cache
+# Giả lập các hàm Streamlit cache
 import streamlit as st
 st.cache_data = lambda *args, **kwargs: lambda func: func
 st.cache_data.clear = lambda: None
 
-from repositories.other_document_tracking_repository import OtherDocumentTrackingRepository
+from repositories.order_repository import OrderRepository
 
-def test_repository_logic():
-    print("🚀 Bắt đầu quá trình kiểm tra độc lập OtherDocumentTrackingRepository...")
+def run_order_test():
+    print("🚀 Bắt đầu quá trình kiểm tra độc lập OrderRepository...")
     
-    # 1. Thử lấy dữ liệu hiện tại
+    # 1. Đồng bộ và kiểm tra số lượng bản ghi hiện tại
     try:
-        df_before = OtherDocumentTrackingRepository.get_all()
-        print(f"✅ Đọc thành công! Hiện tại đang có {len(df_before)} dòng tài liệu trong database.")
+        df_init = OrderRepository.get_all_orders()
+        print(f"✅ Kết nối và lấy danh sách đơn hàng thành công! Số lượng hiện tại: {len(df_init)} đơn.")
     except Exception as e:
-        print(f"❌ Lỗi khi đọc dữ liệu ban đầu: {e}")
+        print(f"❌ Lỗi khi lấy danh sách đơn hàng ban đầu: {e}")
         return
 
-    # 2. Thử thêm mới một bản ghi mẫu
-    print("\n📝 Đang thử thêm một bản ghi kiểm thử...")
-    success = False
+    # Mẫu dữ liệu kiểm thử độc lập
+    test_order_num = "TEST-POSTGRES-2026"
+    
+    # 2. Thử nghiệm hàm Upsert (Thêm mới)
+    print(f"\n📝 Đang thực hiện Upsert đơn hàng kiểm thử: {test_order_num}...")
     try:
-        OtherDocumentTrackingRepository.add_tracking(
-            customer_name="Khách Hàng Test Postgres",
-            document_type="Hợp đồng mẫu",
-            sent_date="2026-07-01",
-            received_date="2026-07-04",
-            note="Bản ghi test tự động từ file script ngoài",
+        OrderRepository.upsert_order(
+            customer_name="Công Ty Thử Nghiệm Thiết Bị",
+            order_number=test_order_num,
+            measurement_date="2026-07-04",
+            cert_status="Chưa cấp",
+            sale_owner="Sale Test Postgres",
             created_by="Hệ thống Test",
-            sale_owner="Admin Test"
+            disable_calibration_notification=0,
+            disable_document_notification=1,
+            disable_payment_notification=0
         )
-        print("✅ Thêm bản ghi mới thành công!")
-        success = True
+        print("✅ Upsert (Thêm mới) đơn hàng thành công!")
     except Exception as e:
-        print(f"❌ KHÔNG THỂ THÊM DỮ LIỆU: Thất bại ở tầng cơ sở dữ liệu.\nChi tiết lỗi: {e}")
-        print("💡 Gợi ý: Hãy kiểm tra xem bảng 'other_document_tracking' đã được thêm cột 'created_by' và 'sale_owner' chưa.")
+        print(f"❌ Lỗi trong quá trình Upsert: {e}")
+        print("💡 Gợi ý: Khả năng cao cột 'order_number' chưa được set ràng buộc UNIQUE trên Postgres.")
+        return  # Dừng chương trình luôn nếu lỗi, không chạy xuống dưới nữa
+
+    # 3. Tìm kiếm chính xác đơn hàng vừa tạo để chứng minh dữ liệu đã ghi thực tế
+    print(f"\n🔍 Tìm kiếm đơn hàng mã {test_order_num}...")
+    df_check = OrderRepository.get_by_order_number(test_order_num)
+    if not df_check.empty:
+        print("✅ Đã tìm thấy đơn hàng trong cơ sở dữ liệu Postgres!")
+        print(f"   Khách hàng: {df_check.iloc[0]['customer_name']} | Sale: {df_check.iloc[0]['sale_owner']}")
+    else:
+        print("❌ Lỗi: Không tìm thấy dữ liệu trong Database dù không crash!")
         return
 
-    # Nếu thêm thành công thì mới chạy tiếp logic kiểm tra xem có lưu và xóa được không
-    if success:
-        df_after = OtherDocumentTrackingRepository.get_all()
-        print(f"📈 Số lượng dòng sau khi thêm: {len(df_after)} dòng.")
-        
-        if not df_after.empty and len(df_after) > len(df_before):
-            new_record_id = int(df_after.iloc[0]['id'])
-            print(f"🔑 Tìm thấy ID của bản ghi mới tạo: {new_record_id}")
-            
-            print(f"\n🗑️ Đang tiến hành xóa bản ghi test ID {new_record_id} để hoàn trả database...")
-            try:
-                OtherDocumentTrackingRepository.delete_tracking(new_record_id)
-                print("✅ Xóa bản ghi test thành công!")
-            except Exception as e:
-                print(f"❌ Lỗi khi xóa dữ liệu: {e}")
-                return
-                
-            df_final = OtherDocumentTrackingRepository.get_all()
-            print(f"🏁 Số lượng dòng cuối cùng: {len(df_final)}")
-            if len(df_before) == len(df_final):
-                print("\n🎉 CHÚC MỪNG! REPOSITORY NÀY ĐÃ HOẠT ĐỘNG HOÀN HẢO TRÊN POSTGRESQL!")
-            else:
-                print("\n⚠️ Số lượng dòng cuối cùng bị lệch so với ban đầu.")
+    # 4. Thử nghiệm chức năng chuyển nhượng chủ sở hữu theo danh sách (IN clause)
+    print(f"\n🔄 Thử nghiệm tính năng bàn giao đơn hàng (mệnh đề IN)...")
+    try:
+        OrderRepository.transfer_sale_owner_by_orders([test_order_num], "Bàn Giao Thao Tác")
+        df_check_transferred = OrderRepository.get_by_order_number(test_order_num)
+        print(f"✅ Bàn giao thành công! Sale hiện tại: {df_check_transferred.iloc[0]['sale_owner']}")
+    except Exception as e:
+        print(f"❌ Lỗi khi thực hiện bàn giao đơn hàng: {e}")
+        return
+
+    # 5. Dọn dẹp dữ liệu kiểm thử (Xóa Cascade) để khôi phục DB sạch sẽ
+    print(f"\n🗑️ Tiến hành xóa Cascade dữ liệu mẫu {test_order_num}...")
+    try:
+        OrderRepository.delete_order_cascade(test_order_num)
+        df_final_check = OrderRepository.get_by_order_number(test_order_num)
+        if df_final_check.empty:
+            print("✅ Xóa dữ liệu mẫu Cascade thành công! Cơ sở dữ liệu sạch sẽ.")
+            print("\n🎉 CHÚC MỪNG! ORDER REPOSITORY HOẠT ĐỘNG HOÀN HẢO TRÊN POSTGRESQL!")
         else:
-            print("❌ Bản ghi mới chưa thực sự được ghi vào Database dù không báo lỗi crash.")
+            print("❌ Lỗi: Bản ghi kiểm thử vẫn tồn tại sau khi chạy lệnh xóa.")
+    except Exception as e:
+        print(f"❌ Lỗi trong quá trình xóa dữ liệu mẫu: {e}")
 
 if __name__ == "__main__":
-    test_repository_logic()
+    run_order_test()
