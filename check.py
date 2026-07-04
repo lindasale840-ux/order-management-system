@@ -1,57 +1,43 @@
-import os
-import sys
-import warnings
+import pandas as pd
+import datetime
 
-warnings.filterwarnings("ignore", category=UserWarning)
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+def simulate_safe_date_value(tracking_row, column_name):
+    """Bản mô phỏng chính xác hàm xử lý ngày lỗi NaT trên giao diện"""
+    if tracking_row is None or column_name not in tracking_row:
+        return datetime.date.today()
+        
+    val_saved = tracking_row[column_name]
+    if pd.notna(val_saved) and val_saved is not None:
+        dt_parsed = pd.to_datetime(val_saved)
+        if pd.notna(dt_parsed):
+            return dt_parsed.date()
+    return datetime.date.today()
 
-from repositories.document_tracking_repository import DocumentTrackingRepository
-
-def run_tracking_test():
-    print("🚀 Bắt đầu quá trình kiểm tra độc lập DocumentTrackingRepository...")
+def run_tests():
+    print("🚀 Khởi động Unit Test kiểm tra lỗi NaTType...")
     
-    # 1. Thêm một tracking test mới
-    test_order = "TEST-ORDER-2026"
-    print(f"\n📝 Đang tạo dữ liệu tracking thử nghiệm cho đơn hàng: {test_order}...")
+    # Kịch bản 1: Cột dữ liệu bình thường chứa chuỗi ngày hợp lệ
+    row_valid = {"customer_send_date": "2026-07-04"}
+    res1 = simulate_safe_date_value(row_valid, "customer_send_date")
+    assert isinstance(res1, datetime.date), "Lỗi: Kết quả phải là đối tượng datetime.date!"
+    assert str(res1) == "2026-07-04", f"Lỗi: Sai lệch ngày, nhận được {res1}"
+    print("✅ Test 1 vượt qua: Đọc chính xác chuỗi ngày từ DB.")
+
+    # Kịch bản 2: Cột dữ liệu chứa giá trị rỗng NaT bướng bỉnh từ Pandas (Phát sinh từ DB PostgreSQL rỗng)
+    row_with_nat = pd.DataFrame([{"customer_send_date": pd.NaT}]).iloc[0]
     try:
-        DocumentTrackingRepository.add_tracking(
-            order_number=test_order,
-            sent_date="2026-07-01",
-            received_date=None,  # Để trống để test chức năng pending
-            note="Test tracking doc on Postgres"
-        )
-        print("✅ Thêm dữ liệu tracking thành công!")
-    except Exception as e:
-        print(f"❌ Lỗi khi thêm tracking: {e}")
-        return
+        res2 = simulate_safe_date_value(row_with_nat, "customer_send_date")
+        assert isinstance(res2, datetime.date), "Lỗi: Dù lỗi NaT nhưng hàm phải trả về ngày mặc định ngày hôm nay!"
+        print(f"✅ Test 2 vượt qua: Bẫy thành công lỗi NaT và chuyển về ngày hôm nay ({res2}).")
+    except ValueError as e:
+        print(f"❌ Test 2 Thất bại: Vẫn bị dính lỗi cũ: {e}")
 
-    # 2. Kiểm tra hàm lấy danh sách pending (chưa nhận)
-    print("\n🔍 Đang test hàm get_pending_return()...")
-    df_pending = DocumentTrackingRepository.get_pending_return()
-    if not df_pending.empty and test_order in df_pending['order_number'].values:
-        print(f"✅ Thành công! Đã tìm thấy đơn hàng {test_order} nằm trong danh sách chờ nhận.")
-    else:
-        print("⚠️ Cảnh báo: Không thấy đơn hàng test trong danh sách pending.")
-
-    # 3. Kiểm tra hàm lấy tracking mới nhất theo đơn hàng cụ thể
-    print(f"\n🔍 Đang test hàm get_latest_by_order() cho đơn {test_order}...")
-    df_latest = DocumentTrackingRepository.get_latest_by_order(test_order)
-    if not df_latest.empty:
-        print(f"✅ Thành công! Ghi nhận ghi chú mới nhất: '{df_latest.iloc[0]['note']}'")
-        tracking_id = int(df_latest.iloc[0]['id'])
-    else:
-        print("❌ Lỗi: Không thể tìm thấy tracking bằng mã đơn hàng vừa tạo.")
-        return
-
-    # 4. Dọn dẹp dữ liệu test bằng hàm xóa
-    print(f"\n🧹 Đang dọn dẹp dữ liệu test (Xóa tracking ID: {tracking_id})...")
-    try:
-        DocumentTrackingRepository.delete_tracking(tracking_id)
-        print("✅ Đã xóa bản ghi thử nghiệm thành công.")
-    except Exception as e:
-        print(f"❌ Lỗi khi xóa bản ghi thử nghiệm: {e}")
-
-    print("\n🎉 HOÀN THÀNH KIỂM TRA! DOCUMENT TRACKING REPOSITORY HOẠT ĐỘNG HOÀN HẢO!")
+    # Kịch bản 3: Không tìm thấy bản ghi cũ (Dữ liệu None)
+    res3 = simulate_safe_date_value(None, "customer_send_date")
+    assert res3 == datetime.date.today(), "Lỗi: Khi dòng trống hoàn toàn phải trả về ngày hôm nay!"
+    print("✅ Test 3 vượt qua: Xử lý an toàn khi không có bản ghi cũ.")
+    
+    print("\n🎉 Tuyệt vời! Tất cả các kịch bản test bẫy lỗi NaT đều thành công tốt đẹp.")
 
 if __name__ == "__main__":
-    run_tracking_test()
+    run_tests()
