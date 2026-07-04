@@ -1,6 +1,8 @@
 import psycopg2
 from psycopg2.extras import RealDictCursor
 import streamlit as st
+import warnings
+warnings.filterwarnings("ignore", category=UserWarning, module="pandas")
 
 # =====================================================================
 # 1. CẤU HÌNH THÔNG TIN KẾT NỐI (MÁY LOCAL CỦA BẠN)

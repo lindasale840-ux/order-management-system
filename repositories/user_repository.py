@@ -1,5 +1,6 @@
 import pandas as pd
 from database.pg_database import query_pg_to_dataframe, execute_pg_query, get_pg_connection
+from datetime import datetime  # <-- THÊM DÒNG NÀY Ở ĐẦU FILE
 
 class UserRepository:
     
@@ -50,11 +51,14 @@ class UserRepository:
     @staticmethod
     def create_user(username, password_hash, role, sale_owner):
         UserRepository.init_security_columns()
+        # 1. Tự sinh thời gian hiện tại từ phía Python
+        current_time = datetime.now()
         query = """
-        INSERT INTO users (username, password_hash, role, sale_owner, login_attempts, reset_requested)
-        VALUES (%s, %s, %s, %s, 0, 0)
+        INSERT INTO users (username, password_hash, role, sale_owner, login_attempts, reset_requested, created_at)
+        VALUES (%s, %s, %s, %s, 0, 0, %s)
         """
-        execute_pg_query(query, (username, password_hash, role, sale_owner))
+        # 3. Truyền biến current_time vào tuple tham số
+        execute_pg_query(query, (username, password_hash, role, sale_owner, current_time))
 
     @staticmethod
     def delete_user(username):
