@@ -136,7 +136,7 @@ def show_dashboard_page():
 
     # --- DATA PROCESSING & FILTRATION ---
     all_df = OrderRepository.get_all_orders()
-    st.write("Số lượng đơn hàng thô từ DB chưa lọc:", len(all_df)) # <--- Chèn dòng này vào để check
+    #st.write("Số lượng đơn hàng thô từ DB chưa lọc:", len(all_df)) # <--- Chèn dòng này vào để check
     all_df["measurement_date"] = pd.to_datetime(
         all_df["measurement_date"],
         errors="coerce"
