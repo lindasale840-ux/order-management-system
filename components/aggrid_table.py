@@ -16,10 +16,24 @@ def render_aggrid(
     color_sla=False
 ):
     gb = GridOptionsBuilder.from_dataframe(dataframe)
-
-    # =========================
-    # DEFAULT COLUMN CONFIG (PREMIUM SLATE)
-    # =========================
+    # === ĐOẠN CHÈN MỚI: CHUẨN HÓA CỘT NGÀY THÁNG THÀNH TEXT ===
+    # Tạo một bản sao để tránh làm ảnh hưởng đến dữ liệu gốc của ứng dụng
+    dataframe = dataframe.copy()
+    # Tự động quét toàn bộ các cột, nếu thấy cột nào là ngày tháng hoặc có tên liên quan, ta ép về dạng chuỗi chỉ có Ngày
+    for col in dataframe.columns:
+        col_lower = col.lower()
+        if "date" in col_lower or "ngay" in col_lower or "created" in col_lower or "updated" in col_lower:
+            try:
+                import pandas as pd
+                # BỔ SUNG: errors='coerce' để tự động biến các ô lỗi/trống thành NaT (không gây crash)
+                # và mixed='infer' để Pandas tự quét nhanh định dạng hỗn hợp mà không đưa ra cảnh báo
+                datetime_col = pd.to_datetime(dataframe[col], errors='coerce', mixed='infer')
+                dataframe.loc[:, col] = datetime_col.dt.strftime('%Y-%m-%d')
+            except Exception:
+                pass
+    # ========================================================
+    # DEFAULT COLUMN CONFIG (BẬT SAO CHÉP TEXT, BÔI ĐEN RANGE)
+    # ========================================================
     gb.configure_default_column(
         sortable=True,
         filter=True,
@@ -33,9 +47,9 @@ def render_aggrid(
         minWidth=130
     )
 
-    # =========================
+    # ========================================================
     # PAGINATION
-    # =========================
+    # ========================================================
     if pagination:
         gb.configure_pagination(
             enabled=True,
@@ -43,9 +57,9 @@ def render_aggrid(
             paginationPageSize=page_size
         )
 
-    # =========================
+    # ========================================================
     # SELECTION
-    # =========================
+    # ========================================================
     gb.configure_selection(
         selection_mode="multiple",
         use_checkbox=False
@@ -53,7 +67,9 @@ def render_aggrid(
 
     grid_options = gb.build()
 
-    # Tinh chỉnh thiết kế cho các dòng trạng thái SLA (Màu pastel mịn màng chuyên nghiệp)
+    # ========================================================
+    # COLOR SLA STYLE (TỐI ƯU: KHÔNG GHI ĐÈ ĐÈ COLUMN DEFINITIONS)
+    # ========================================================
     if color_sla and "sla_status" in dataframe.columns:
         sla_style = JsCode(
             """
@@ -87,12 +103,13 @@ def render_aggrid(
             """
         )
 
-        grid_options["columnDefs"] = [{"field": col} for col in dataframe.columns]
-
-        for col in grid_options["columnDefs"]:
-            if col["field"] == "sla_status":
-                col["cellStyle"] = sla_style
-
+        # ✅ ĐÃ SỬA: Duyệt trực tiếp qua cấu hình cột có sẵn thay vì khởi tạo lại mảng mới
+        if "columnDefs" in grid_options:
+            for col in grid_options["columnDefs"]:
+                if col.get("field") == "sla_status":
+                    col["cellStyle"] = sla_style
+    
+    # Kích hoạt toàn diện tính năng bôi đen chọn vùng và copy dữ liệu thô từ bảng
     grid_options["enableRangeSelection"] = True
     grid_options["enableCellTextSelection"] = True
     grid_options["ensureDomOrder"] = True
@@ -100,12 +117,10 @@ def render_aggrid(
     # ========================================================
     # CHỨC NĂNG PHÂN TRANG CHUYÊN NGHIỆP (NHẬP SỐ ĐỂ NHẢY TRANG)
     # ========================================================
-    # ĐÃ SỬA: Chỉ hiển thị ô nhập số nếu trang đó thực sự bật phân trang cũ (pagination=True)
     if pagination and not dataframe.empty:
         total_rows = len(dataframe)
         max_pages = math.ceil(total_rows / page_size)
         
-        # Tạo giao diện ô nhập số gọn gàng ngay trên bảng dữ liệu
         col1, col2 = st.columns([2, 8])
         with col1:
             target_page = st.number_input(
@@ -119,17 +134,14 @@ def render_aggrid(
         with col2:
             st.markdown(f"<p style='margin-top:28px; color:#64748b;'>Tổng số: {max_pages} trang ({total_rows} dòng)</p>", unsafe_allow_html=True)
             
-        # Thêm đoạn mã JavaScript điều hướng API của AgGrid nhảy trang theo thời gian thực
         grid_options["onGridReady"] = JsCode(f"""
             function(params) {{
                 params.api.paginationGoToPage({target_page - 1});
             }}
         """)
     else:
-        # Nếu trang mới dùng Python Slicing (pagination=False), ta ẩn luôn thanh panel phân trang cũ của AgGrid đi cho sạch
         grid_options["suppressPaginationPanel"] = True
 
-    # Ép bảng AgGrid sử dụng theme thiết kế Alpine hiện đại
     return AgGrid(
         dataframe,
         gridOptions=grid_options,
@@ -140,5 +152,5 @@ def render_aggrid(
         update_mode=GridUpdateMode.NO_UPDATE,
         fit_columns_on_grid_load=False,
         enable_enterprise_modules=False,
-        allow_unsafe_jscode=True # Kích hoạt để thực thi tính năng nhảy trang JsCode
+        allow_unsafe_jscode=True
     )
