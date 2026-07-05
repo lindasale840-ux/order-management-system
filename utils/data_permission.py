@@ -7,13 +7,15 @@ from repositories.assistant_sale_repository import (
 
 def filter_by_sale_owner(df, role=None, username=None, sale_owner=None):
     # Nếu không truyền vào thì mới lấy từ session_state làm mặc định
-    if role == None:
+    # Dùng "is None" chuẩn PEP 8 cho các biến rỗng
+    if role is None:
         role = st.session_state.get("role")
-    if username == None:
+    if username is None:
         username = st.session_state.get("username")
-    if sale_owner == None:
+    if sale_owner is None:
         sale_owner = st.session_state.get("sale_owner")
 
+    # Dùng "==" cho các giá trị chuỗi (String) để đảm bảo logic phân quyền
     if role == "ADMIN":
         return df
 
