@@ -22,7 +22,7 @@ class OrderRepository:
         query = """
         SELECT *
         FROM orders
-        WHERE is_deleted = 0
+        WHERE is_deleted = 0 OR is_deleted IS NULL
         ORDER BY id DESC
         """
         df = query_pg_to_dataframe(query)
@@ -131,7 +131,7 @@ class OrderRepository:
         st.cache_data.clear()   
 
     @staticmethod
-    @st.cache_data(ttl=30)
+    #@st.cache_data(ttl=30)
     def get_deleted_orders():
         OrderRepository.init_payment_notification_column()
         query = "SELECT * FROM orders WHERE is_deleted = 1 ORDER BY deleted_at DESC"

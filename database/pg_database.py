@@ -45,36 +45,7 @@ def init_pg_db():
 
 # Chèn đoạn này vào cuối file pg_database.py của bạn:
 
-def query_pg_to_dataframe(sql, params=None):
-    """
-    Hàm đọc dữ liệu từ Postgres và trả về một chiếc Pandas Dataframe chuẩn chỉnh.
-    Tận dụng execute_pg_query để đảm bảo kết nối và tham số chạy hoàn hảo.
-    """
-    import pandas as pd
-    
-    try:
-        # 1. Lấy dữ liệu thô từ hàm execute_pg_query ổn định của chúng ta
-        data = execute_pg_query(sql, params)
-        
-        # 2. Tạo kết nối tạm để lấy chuẩn tên các cột dữ liệu tránh lỗi hiển thị trên AgGrid
-        conn = get_pg_connection()
-        cur = conn.cursor()
-        cur.execute(sql, params)
-        colnames = [desc[0] for desc in cur.description] if cur.description else []
-        cur.close()
-        conn.close()
-        
-        # 3. Đóng gói thành DataFrame
-        if data and colnames:
-            return pd.DataFrame(data, columns=colnames)
-        elif data:
-            return pd.DataFrame(data)
-        else:
-            return pd.DataFrame()
-            
-    except Exception as e:
-        print(f"❌ Lỗi truy vấn Dataframe từ Postgres: {e}")
-        return pd.DataFrame()
+
 
 def execute_pg_query(query, params=None):
     import pandas as pd
@@ -94,7 +65,8 @@ def execute_pg_query(query, params=None):
     conn = None
     try:
         conn = get_pg_connection() 
-        cur = conn.cursor()
+        # ĐỔI THÀNH SỬ DỤNG RealDictCursor ĐỂ LẤY DỮ LIỆU DẠNG KEY-VALUE
+        cur = conn.cursor(cursor_factory=RealDictCursor)
         cur.execute(query, params)
         
         # Lấy dữ liệu nếu đây là câu lệnh SELECT
@@ -116,6 +88,27 @@ def execute_pg_query(query, params=None):
         if conn:
             conn.close()
         
+        
+def query_pg_to_dataframe(sql, params=None):
+    """
+    Hàm đọc dữ liệu từ Postgres và trả về một chiếc Pandas Dataframe chuẩn chỉnh.
+    """
+    import pandas as pd
+    
+    try:
+        # 1. Lấy dữ liệu dạng danh sách các Dictionary nhờ có RealDictCursor
+        data = execute_pg_query(sql, params)
+        
+        # 2. Chuyển thẳng danh sách Dictionary thành DataFrame (Tên cột tự động nhận diện chính xác)
+        if data:
+            return pd.DataFrame(data)
+        else:
+            return pd.DataFrame()
+            
+    except Exception as e:
+        print(f"❌ Lỗi truy vấn Dataframe từ Postgres: {e}")
+        return pd.DataFrame()
+            
 def export_pg_backup():
     """Hàm xuất toàn bộ cấu trúc và dữ liệu PostgreSQL thành dạng chuỗi văn bản (SQL Script)"""
     import io

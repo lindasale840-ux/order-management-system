@@ -33,7 +33,7 @@ from database.pg_database import init_pg_db
 # =========================
 # INIT DATABASE
 # =========================
-initialize_database()
+#initialize_database()
 init_pg_db()
 
 # =========================
