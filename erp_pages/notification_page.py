@@ -23,7 +23,13 @@ def get_processed_notification_data(search_keyword):
     """
     HÀM XỬ LÝ LOGIC DỮ LIỆU TẬP TRUNG (Giữ nguyên vẹn 100% logic gốc của bạn)
     """
-    df = FinanceService.build_finance_dataframe()
+    # Lấy thông tin phiên làm việc hiện tại của trình duyệt
+    current_role = st.session_state.get("role")
+    current_user = st.session_state.get("username")
+    current_owner = st.session_state.get("sale_owner")
+
+    # BẮT BUỘC: Truyền đầy đủ vào cả 2 nơi gọi hàm bên dưới để phân tách cache
+    df = FinanceService.build_finance_dataframe(role=current_role, username=current_user, sale_owner=current_owner)
 
     # Áp dụng bộ lọc tìm kiếm toàn cầu nếu có
     if search_keyword:
@@ -60,7 +66,7 @@ def get_processed_notification_data(search_keyword):
     # LOGIC KIỂM TRA TÀI LIỆU THIẾU (MISSING DOCUMENT LOGIC)
     # =========================
     tracking_df = DocumentTrackingRepository.get_latest_tracking()
-    df_for_tracking = FinanceService.build_finance_dataframe()
+    df_for_tracking = FinanceService.build_finance_dataframe(role=current_role, username=current_user, sale_owner=current_owner)
 
     allowed_orders = set(df_for_tracking["order_number"].astype(str))
     tracking_df = tracking_df[tracking_df["order_number"].astype(str).isin(allowed_orders)]

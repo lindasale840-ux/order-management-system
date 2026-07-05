@@ -16,7 +16,7 @@ class OrderRepository:
             pass  # Cột đã tồn tại hoặc bảng chưa tạo, bỏ qua để hệ thống không crash
 
     @staticmethod
-    #@st.cache_data(ttl=30)
+    @st.cache_data(ttl=30)
     def get_all_orders():
         OrderRepository.init_payment_notification_column()
         query = """
@@ -29,7 +29,7 @@ class OrderRepository:
         return convert_utc_columns(df)
 
     @staticmethod
-    #@st.cache_data(ttl=30)
+    @st.cache_data(ttl=30)
     def get_customers():
         query = """
         SELECT DISTINCT customer_name
@@ -39,7 +39,7 @@ class OrderRepository:
         return query_pg_to_dataframe(query)
 
     @staticmethod
-    #@st.cache_data(ttl=30)
+    @st.cache_data(ttl=30)
     def get_orders_by_customer(customer_name):
         OrderRepository.init_payment_notification_column()
         query = """
@@ -131,7 +131,7 @@ class OrderRepository:
         st.cache_data.clear()   
 
     @staticmethod
-    #@st.cache_data(ttl=30)
+    @st.cache_data(ttl=30)
     def get_deleted_orders():
         OrderRepository.init_payment_notification_column()
         query = "SELECT * FROM orders WHERE is_deleted = 1 ORDER BY deleted_at DESC"

@@ -2,19 +2,23 @@ from services.finance_service import FinanceService
 from repositories.document_tracking_repository import DocumentTrackingRepository
 import pandas as pd
 from config.app_config import DOCUMENT_WARNING_DAYS
+import streamlit as st
 
 class SidebarNotificationService:
 
     @staticmethod
     def get_alert_summary(username: str):
-        # Truyền username vào build_finance_dataframe để làm mới bộ đệm (cache key) theo từng user
-        df = FinanceService.build_finance_dataframe(username=username)
+        # Lấy thông tin định danh phân quyền hiện tại từ session_state
+        current_role = st.session_state.get("role")
+        current_owner = st.session_state.get("sale_owner")
+        
+        # Gọi hàm lần 1: Đã truyền đủ tham số
+        df = FinanceService.build_finance_dataframe(role=current_role, username=username, sale_owner=current_owner)
 
         missing_cert = len(
             df[df["cert_workflow_status"] == "Missing Cert"]
         )
 
-        # ĐÃ CẬP NHẬT: Thêm điều kiện loại trừ các đơn hàng có disable_payment_notification == 1
         payment_overdue = len(
             df[
                 (df["payment_overdue"] == "Overdue")
@@ -34,7 +38,9 @@ class SidebarNotificationService:
         pending_return = 0
 
         tracking_df = DocumentTrackingRepository.get_latest_tracking()
-        df = FinanceService.build_finance_dataframe()
+        
+        # ✅ ĐÃ SỬA: Đồng bộ truyền đủ tham số phân quyền để không bị tràn cache dữ liệu
+        df = FinanceService.build_finance_dataframe(role=current_role, username=username, sale_owner=current_owner)
 
         allowed_orders = set(
             df["order_number"].astype(str)
@@ -46,9 +52,9 @@ class SidebarNotificationService:
         ]
         today = pd.Timestamp.today()
 
-        # =========================
-        # Missing Send
-        # =========================
+        # ========================================================
+        # Missing Send (Tính toán dựa trên df đã được lọc chuẩn)
+        # ========================================================
         sent_orders = set()
         if not tracking_df.empty:
             sent_orders = set(tracking_df["order_number"].astype(str))
@@ -71,9 +77,9 @@ class SidebarNotificationService:
 
         missing_send = len(missing_send_df)
 
-        # =========================
+        # ========================================================
         # Pending Return
-        # =========================
+        # ========================================================
         if not tracking_df.empty:
             tracking_df["sent_date"] = pd.to_datetime(
                 tracking_df["sent_date"],

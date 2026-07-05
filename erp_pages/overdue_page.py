@@ -31,9 +31,10 @@ def show_overdue_page():
         customer_options
     )
 
-    df = (
-        FinanceService
-        .build_finance_dataframe()
+    df = FinanceService.build_finance_dataframe(
+        role=st.session_state.get("role"),
+        username=st.session_state.get("username"),
+        sale_owner=st.session_state.get("sale_owner")
     )
 
     if selected_customer != "ALL":

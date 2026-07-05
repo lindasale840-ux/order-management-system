@@ -25,10 +25,11 @@ def show_chart_customer_page():
     # LOAD DATA
     # =========================
 
-    df = (
-        FinanceService
-        .build_finance_dataframe()
-    )
+    df = FinanceService.build_finance_dataframe(
+    role=st.session_state.get("role"),
+    username=st.session_state.get("username"),
+    sale_owner=st.session_state.get("sale_owner")
+)
 
     if df.empty:
 
