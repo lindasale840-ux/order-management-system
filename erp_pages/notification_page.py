@@ -27,7 +27,11 @@ def show_notification_page():
     # ========================================================
     search_keyword = st.text_input(t("fast_query_search_client_accou")).strip()
 
-    df = FinanceService.build_finance_dataframe()
+    df = FinanceService.build_finance_dataframe(
+        role=st.session_state.get("role"),
+        username=st.session_state.get("username"),
+        sale_owner=st.session_state.get("sale_owner")
+    )
 
     if search_keyword:
         customer_match = df["customer_name"].astype(str).str.contains(search_keyword, case=False, na=False)
@@ -62,7 +66,11 @@ def show_notification_page():
     # MISSING DOCUMENT SENDING LOGIC
     # =========================
     tracking_df = DocumentTrackingRepository.get_latest_tracking()
-    df = FinanceService.build_finance_dataframe()
+    df = FinanceService.build_finance_dataframe(
+        role=st.session_state.get("role"),
+        username=st.session_state.get("username"),
+        sale_owner=st.session_state.get("sale_owner")
+    )
 
     allowed_orders = set(
         df["order_number"].astype(str)

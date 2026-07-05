@@ -2,13 +2,18 @@ from services.finance_service import FinanceService
 from repositories.document_tracking_repository import DocumentTrackingRepository
 import pandas as pd
 from config.app_config import DOCUMENT_WARNING_DAYS
-
+import streamlit as st
 class SidebarNotificationService:
 
     @staticmethod
     def get_alert_summary(username: str):
         # Truyền username vào build_finance_dataframe để làm mới bộ đệm (cache key) theo từng user
-        df = FinanceService.build_finance_dataframe(username=username)
+        # Lấy thông tin định danh phân quyền hiện tại từ session_state
+        current_role = st.session_state.get("role")
+        current_owner = st.session_state.get("sale_owner")
+        
+        # Gọi hàm lần 1: Đã truyền đủ tham số
+        df = FinanceService.build_finance_dataframe(role=current_role, username=username, sale_owner=current_owner)
 
         missing_cert = len(
             df[df["cert_workflow_status"] == "Missing Cert"]
@@ -34,8 +39,7 @@ class SidebarNotificationService:
         pending_return = 0
 
         tracking_df = DocumentTrackingRepository.get_latest_tracking()
-        df = FinanceService.build_finance_dataframe()
-
+        df = FinanceService.build_finance_dataframe(role=current_role, username=username, sale_owner=current_owner)
         allowed_orders = set(
             df["order_number"].astype(str)
         )
