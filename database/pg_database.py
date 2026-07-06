@@ -9,7 +9,7 @@ warnings.filterwarnings("ignore", category=UserWarning, module="pandas")
 # =====================================================================
 DB_HOST = "localhost"
 DB_PORT = "5432"
-DB_NAME = "erp_order_system"  # Tên database bạn tạo ở bước 4 lúc nãy
+DB_NAME = "erp_production"  # Tên database bạn tạo ở bước 4 lúc nãy
 DB_USER = "postgres"          # Tài khoản mặc định tối cao của Postgres
 DB_PASS = "famille123"            # Hãy thay bằng mật khẩu bạn đã đặt khi cài đặt nhé!
 

@@ -5,11 +5,11 @@ from psycopg2 import sql
 # ==============================================================================
 # ⚙️ CẤU HÌNH THÔNG TIN KẾT NỐI (Hãy sửa theo thông tin máy của bạn)
 # ==============================================================================
-SQLITE_DB_PATH = "app.db"  # Đường dẫn tới file SQLite mới nhất mang từ công ty về
+SQLITE_DB_PATH = "database/app.db"  # Đường dẫn tới file SQLite mới nhất mang từ công ty về
 
 POSTGRES_CONFIG = {
     "host": "localhost",
-    "database": "erp_prod_test",  # Tên database Postgres (phải tạo trống trước trên pgAdmin)
+    "database": "erp_production",  # Tên database Postgres (phải tạo trống trước trên pgAdmin)
     "user": "postgres",
     "password": "famille123",  # Điền mật khẩu Postgres của bạn vào đây
     "port": "5432"
