@@ -74,9 +74,19 @@ def show_document_tracking_page():
             received_date = None
             st.info(t("document_packet_flagged_as_cur"))
         else:
+            # 1. Đặt ngày mặc định là hôm nay
             received_date_value = pd.Timestamp.today().date()
-            if pd.notna(received_date_saved):
-                received_date_value = pd.to_datetime(received_date_saved).date()
+            
+            # 2. Kiểm tra xem dữ liệu đã lưu có tồn tại và hợp lệ không (không phải Null/NaN/NaT)
+            if pd.notna(received_date_saved) and received_date_saved is not None:
+                # Chuyển đổi sang datetime object của pandas
+                dt_parsed = pd.to_datetime(received_date_saved)
+                
+                # Bẫy thêm một lần nữa đề phòng pd.to_datetime trả về NaT
+                if pd.notna(dt_parsed):
+                    received_date_value = dt_parsed.date()
+            
+            # 3. Nạp vào Streamlit an toàn 100%
             received_date = st.date_input("Consignee Received Date Stamp", value=received_date_value)
 
         note = st.text_input(t("logistics_remarks_notes"), value=str(existing_data.get("note", "") or ""))

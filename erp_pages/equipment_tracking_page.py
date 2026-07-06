@@ -6,6 +6,20 @@ from services.equipment_tracking_service import EquipmentTrackingService
 from utils.business_day import working_days_between
 from components.aggrid_table import render_aggrid
 
+def safe_date_value(tracking_row, column_name):
+    """
+    Hàm helper bẫy lỗi NaT/None và ép kiểu an toàn về datetime.date cho st.date_input
+    """
+    if tracking_row is None or column_name not in tracking_row:
+        return pd.Timestamp.today().date()
+        
+    val_saved = tracking_row[column_name]
+    if pd.notna(val_saved) and val_saved is not None:
+        dt_parsed = pd.to_datetime(val_saved)
+        if pd.notna(dt_parsed):
+            return dt_parsed.date()
+    return pd.Timestamp.today().date()
+
 def show_equipment_tracking_page():
     st.title("📦 Equipment & Asset Lifecycle Tracking")
 
@@ -28,9 +42,15 @@ def show_equipment_tracking_page():
     existing_tracking = EquipmentTrackingRepository.get_by_order_number(order_number)
     tracking = existing_tracking.iloc[0] if not existing_tracking.empty else None
 
+    # --- ĐỒNG BỘ DỮ LIỆU CŨ LÊN UI ---
     service_default = "LAB"
+    direct_to_customer_default = False
+    note_default = ""
+
     if tracking is not None:
         service_default = tracking["service_type"]
+        direct_to_customer_default = bool(tracking.get("direct_to_customer", False))
+        note_default = str(tracking.get("note", "") or "")
 
     service_type = st.selectbox(
         "Operational Service Routing Architecture",
@@ -38,10 +58,14 @@ def show_equipment_tracking_page():
         index=["LAB", "SUBCONTRACT_LAB"].index(service_default)
     )
 
-    direct_to_customer = st.checkbox("Subcontract Vendor Dispatches Directly To End Client")
+    direct_to_customer = st.checkbox(
+        "Subcontract Vendor Dispatches Directly To End Client", 
+        value=direct_to_customer_default
+    )
 
-    customer_send_date = st.date_input("Client Unit Outbound Dispatch Date")
-    gst_receive_date = st.date_input("GST Operations Intake Receipt Date")
+    # Đổ dữ liệu an toàn vào các ô Date Input
+    customer_send_date = st.date_input("Client Unit Outbound Dispatch Date", value=safe_date_value(tracking, "customer_send_date"))
+    gst_receive_date = st.date_input("GST Operations Intake Receipt Date", value=safe_date_value(tracking, "gst_receive_date"))
 
     subcontract_name = ""
     gst_send_sub_date = None
@@ -54,26 +78,31 @@ def show_equipment_tracking_page():
             "Subcontract Vendor Organization Name (*)",
             value=(tracking["subcontract_name"] if tracking is not None else "")
         )
-        gst_send_sub_date = st.date_input("GST Handover To Subcontractor Date")
-        sub_receive_date = st.date_input("Subcontractor Facility Ingestion Date")
-        sub_send_date = st.date_input("Subcontractor Fulfillment Release Date")
+        gst_send_sub_date = st.date_input("GST Handover To Subcontractor Date", value=safe_date_value(tracking, "gst_send_sub_date"))
+        sub_receive_date = st.date_input("Subcontractor Facility Ingestion Date", value=safe_date_value(tracking, "sub_receive_date"))
+        sub_send_date = st.date_input("Subcontractor Fulfillment Release Date", value=safe_date_value(tracking, "sub_send_date"))
 
         if not direct_to_customer:
-            gst_receive_back_date = st.date_input("GST Intake Back From Subcontractor")
+            gst_receive_back_date = st.date_input("GST Intake Back From Subcontractor", value=safe_date_value(tracking, "gst_receive_back_date"))
 
     if service_type == "LAB" or (service_type == "SUBCONTRACT_LAB" and not direct_to_customer):
-        gst_send_customer_date = st.date_input("GST Final Delivery Release Outbound")
+        gst_send_customer_date = st.date_input("GST Final Delivery Release Outbound", value=safe_date_value(tracking, "gst_send_customer_date"))
     else:
         gst_send_customer_date = None
 
-    not_receive_yet = st.checkbox("Consignee Client Asset In Transit (Not Received Yet)")
+    # Logic ẩn hiện ngày nhận của khách hàng cũ
+    not_receive_yet_default = False
+    if tracking is not None and (pd.isna(tracking.get("customer_receive_date")) or tracking.get("customer_receive_date") is None):
+        not_receive_yet_default = True
+
+    not_receive_yet = st.checkbox("Consignee Client Asset In Transit (Not Received Yet)", value=not_receive_yet_default)
 
     if not_receive_yet:
         customer_receive_date = None
     else:
-        customer_receive_date = st.date_input("Client Ultimate Confirmed Intake Date")
+        customer_receive_date = st.date_input("Client Ultimate Confirmed Intake Date", value=safe_date_value(tracking, "customer_receive_date"))
 
-    note = st.text_area("Asset Operational History Notes & Remarks")
+    note = st.text_area("Asset Operational History Notes & Remarks", value=note_default)
 
     # --- VALIDATION FORM THEO DÕI THIẾT BỊ ---
     is_asset_invalid = (service_type == "SUBCONTRACT_LAB" and not subcontract_name.strip())
@@ -142,7 +171,6 @@ def show_equipment_tracking_page():
 
     st.divider()
     
-    # Bảng hiển thị thông minh tích hợp bộ định màu SLA (Loại bỏ selectbox Rows per page cũ kĩ)
     render_aggrid(tracking_df, height=500, page_size=10, color_sla=True, key="equipment_tracking_main_grid")
 
     st.divider()

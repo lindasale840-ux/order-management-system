@@ -26,10 +26,10 @@ def show_chart_customer_page():
     # =========================
 
     df = FinanceService.build_finance_dataframe(
-        role=st.session_state.get("role"),
-        username=st.session_state.get("username"),
-        sale_owner=st.session_state.get("sale_owner")
-    )
+    role=st.session_state.get("role"),
+    username=st.session_state.get("username"),
+    sale_owner=st.session_state.get("sale_owner")
+)
 
     if df.empty:
 
@@ -158,7 +158,9 @@ def show_chart_customer_page():
 
                 height=300,
 
-                page_size=12
+                page_size=12,
+                
+                key="revenue_trend_by_month"  # <-- Thêm key độc nhất ở đây!
             )
 
         st.divider()
@@ -276,7 +278,9 @@ def show_chart_customer_page():
 
             height=350,
 
-            page_size=10
+            page_size=10,
+            
+            key="top_10_customers"
         )
 
     # ==================================================

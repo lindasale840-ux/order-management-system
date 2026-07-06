@@ -1,140 +1,53 @@
 import pandas as pd
 import streamlit as st
-
-from sqlalchemy import text
-
-from database.connection import engine
-
-from utils.datetime_utils import (
-    convert_utc_columns
-)
-
+from database.pg_database import query_pg_to_dataframe, execute_pg_query
+from utils.datetime_utils import convert_utc_columns
 
 class OtherDocumentTrackingRepository:
 
     @staticmethod
     @st.cache_data(ttl=30)
     def get_all():
-
         query = """
-
         SELECT *
-
         FROM other_document_tracking
-
         ORDER BY id DESC
-
         """
-
-        df = pd.read_sql(
-            query,
-            engine
-        )
-
+        df = query_pg_to_dataframe(query)
         return convert_utc_columns(df)
 
     @staticmethod
     def add_tracking(
-
         customer_name,
-
         document_type,
-
         sent_date,
-
         received_date,
-
         note,
-        
-        created_by,   # Thêm biến này
-        sale_owner    # Thêm biến này
-
+        created_by,   
+        sale_owner    
     ):
-
-        with engine.begin() as conn:
-
-            conn.execute(
-
-                text("""
-
-                INSERT INTO other_document_tracking (
-
-                    customer_name,
-
-                    document_type,
-
-                    sent_date,
-
-                    received_date,
-
-                    note,
-                    
-                    created_by,   
-                    sale_owner   
-
-                )
-
-                VALUES (
-
-                    :customer_name,
-
-                    :document_type,
-
-                    :sent_date,
-
-                    :received_date,
-
-                    :note,
-                    
-                    :created_by,
-                    :sale_owner
-
-                )
-
-                """),
-
-                {
-
-                    "customer_name": customer_name,
-
-                    "document_type": document_type,
-
-                    "sent_date": sent_date,
-
-                    "received_date": received_date,
-
-                    "note": note,
-                    
-                    "created_by": created_by,     # Truyền giá trị vào
-                    "sale_owner": sale_owner      # Truyền giá trị vào
-
-                }
-
-            )
-
+        query = """
+        INSERT INTO other_document_tracking (
+            customer_name,
+            document_type,
+            sent_date,
+            received_date,
+            note,
+            created_by,   
+            sale_owner   
+        )
+        VALUES (%s, %s, %s, %s, %s, %s, %s)
+        """
+        
+        params = (customer_name, document_type, sent_date, received_date, note, created_by, sale_owner)
+        execute_pg_query(query, params)
         st.cache_data.clear()
 
     @staticmethod
     def delete_tracking(record_id):
-
-        with engine.begin() as conn:
-
-            conn.execute(
-
-                text("""
-
-                DELETE FROM other_document_tracking
-
-                WHERE id = :id
-
-                """),
-
-                {
-
-                    "id": record_id
-
-                }
-
-            )
-
+        query = """
+        DELETE FROM other_document_tracking
+        WHERE id = %s
+        """
+        execute_pg_query(query, (record_id,))
         st.cache_data.clear()

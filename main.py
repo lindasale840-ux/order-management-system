@@ -28,11 +28,13 @@ from erp_pages.historical_import_page import show_historical_import_page
 from erp_pages.trash_bin_page import show_trash_bin_page
 from erp_pages.ownership_transfer_page import show_ownership_transfer_page
 from erp_pages.notes_page import show_notes_page
+from database.pg_database import init_pg_db
 
 # =========================
 # INIT DATABASE
 # =========================
-initialize_database()
+#initialize_database()
+init_pg_db()
 
 # =========================
 # PAGE CONFIG

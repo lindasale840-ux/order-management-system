@@ -19,20 +19,19 @@ def export_button(df, filename):
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
 
-def show_notification_page():
-    st.title(t("notification_center"))
+def get_processed_notification_data(search_keyword):
+    """
+    HÀM XỬ LÝ LOGIC DỮ LIỆU TẬP TRUNG (Giữ nguyên vẹn 100% logic gốc của bạn)
+    """
+    # Lấy thông tin phiên làm việc hiện tại của trình duyệt
+    current_role = st.session_state.get("role")
+    current_user = st.session_state.get("username")
+    current_owner = st.session_state.get("sale_owner")
 
-    # ========================================================
-    # GLOBAL SEARCH FILTER
-    # ========================================================
-    search_keyword = st.text_input(t("fast_query_search_client_accou")).strip()
+    # BẮT BUỘC: Truyền đầy đủ vào cả 2 nơi gọi hàm bên dưới để phân tách cache
+    df = FinanceService.build_finance_dataframe(role=current_role, username=current_user, sale_owner=current_owner)
 
-    df = FinanceService.build_finance_dataframe(
-        role=st.session_state.get("role"),
-        username=st.session_state.get("username"),
-        sale_owner=st.session_state.get("sale_owner")
-    )
-
+    # Áp dụng bộ lọc tìm kiếm toàn cầu nếu có
     if search_keyword:
         customer_match = df["customer_name"].astype(str).str.contains(search_keyword, case=False, na=False)
         if "order_number" in df.columns:
@@ -41,6 +40,7 @@ def show_notification_page():
         else:
             df = df[customer_match]
 
+    # Phân loại dữ liệu các tab cơ bản
     missing_cert_df = df[df["cert_workflow_status"] == "Missing Cert"]
 
     payment_overdue_df = df[
@@ -63,29 +63,19 @@ def show_notification_page():
     today = pd.Timestamp.today()
 
     # =========================
-    # MISSING DOCUMENT SENDING LOGIC
+    # LOGIC KIỂM TRA TÀI LIỆU THIẾU (MISSING DOCUMENT LOGIC)
     # =========================
     tracking_df = DocumentTrackingRepository.get_latest_tracking()
-    df = FinanceService.build_finance_dataframe(
-        role=st.session_state.get("role"),
-        username=st.session_state.get("username"),
-        sale_owner=st.session_state.get("sale_owner")
-    )
+    df_for_tracking = FinanceService.build_finance_dataframe(role=current_role, username=current_user, sale_owner=current_owner)
 
-    allowed_orders = set(
-        df["order_number"].astype(str)
-    )
-
-    tracking_df = tracking_df[
-        tracking_df["order_number"].astype(str)
-        .isin(allowed_orders)
-    ]
+    allowed_orders = set(df_for_tracking["order_number"].astype(str))
+    tracking_df = tracking_df[tracking_df["order_number"].astype(str).isin(allowed_orders)]
+    
     sent_orders = set()
-
     if not tracking_df.empty:
         sent_orders = set(tracking_df["order_number"].astype(str))
 
-    missing_document_df = df.copy()
+    missing_document_df = df_for_tracking.copy()
     missing_document_df["cert_status"] = pd.to_datetime(
         missing_document_df["cert_status"],
         errors="coerce"
@@ -98,8 +88,9 @@ def show_notification_page():
         & (missing_document_df["disable_document_notification"] != 1)
     ]
 
+    # Xử lý logic hàng chờ trả về (Pending Return)
     pending_return_df = tracking_df.copy()
-    ignore_orders = set(df[df["disable_document_notification"] == 1]["order_number"])
+    ignore_orders = set(df_for_tracking[df_for_tracking["disable_document_notification"] == 1]["order_number"])
 
     if not pending_return_df.empty:
         pending_return_df["sent_date"] = pd.to_datetime(
@@ -133,6 +124,35 @@ def show_notification_page():
                 pending_order_match = pending_return_df["order_number"].astype(str).str.contains(search_keyword, case=False, na=False)
                 pending_return_df = pending_return_df[pending_customer_match | pending_order_match]
 
+    return (
+        missing_cert_df,
+        payment_overdue_df,
+        due_soon_df,
+        calibration_overdue_df,
+        missing_invoice_df,
+        missing_document_df,
+        pending_return_df
+    )
+
+def show_notification_page():
+    st.title(t("notification_center"))
+
+    # ========================================================
+    # GLOBAL SEARCH FILTER
+    # ========================================================
+    search_keyword = st.text_input(t("fast_query_search_client_accou")).strip()
+
+    # Gọi hàm xử lý logic tách biệt bên trên để lấy sạch dữ liệu cho 7 tabs
+    (
+        missing_cert_df,
+        payment_overdue_df,
+        due_soon_df,
+        calibration_overdue_df,
+        missing_invoice_df,
+        missing_document_df,
+        pending_return_df
+    ) = get_processed_notification_data(search_keyword)
+
     # =========================
     # KPI SUMMARY
     # =========================
@@ -156,7 +176,7 @@ def show_notification_page():
     st.divider()
 
     # ========================================================
-    # ĐỘT PHÁ: BỘ ĐIỀU KHIỂN PHÂN TRANG DÙNG CHUNG CHO TẤT CẢ CÁC TABS
+    # BỘ ĐIỀU KHIỂN PHÂN TRANG DÙNG CHUNG CHO TẤT CẢ CÁC TABS
     # ========================================================
     st.subheader(t("filtered_alert_logs_controller"))
     col_p1, col_p2, col_p3 = st.columns([2, 2, 6])
@@ -192,14 +212,14 @@ def show_notification_page():
     # RENDER TABS SYSTEM
     # ========================================================
     tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
-    f"{t('tab_missing_cert')} ({len(missing_cert_df)})",
-    f"{t('tab_payment_overdue')} ({len(payment_overdue_df)})",
-    f"{t('tab_due_soon')} ({len(due_soon_df)})",
-    f"{t('tab_missing_invoice')} ({len(missing_invoice_df)})",
-    f"{t('tab_missing_send')} ({len(missing_document_df)})",
-    f"{t('tab_pending_return')} ({len(pending_return_df)})",
-    f"{t('tab_calibration_overdue')} ({len(calibration_overdue_df)})"
-])
+        f"{t('tab_missing_cert')} ({len(missing_cert_df)})",
+        f"{t('tab_payment_overdue')} ({len(payment_overdue_df)})",
+        f"{t('tab_due_soon')} ({len(due_soon_df)})",
+        f"{t('tab_missing_invoice')} ({len(missing_invoice_df)})",
+        f"{t('tab_missing_send')} ({len(missing_document_df)})",
+        f"{t('tab_pending_return')} ({len(pending_return_df)})",
+        f"{t('tab_calibration_overdue')} ({len(calibration_overdue_df)})"
+    ])
 
     # --- TAB 1 ---
     with tab1:

@@ -19,11 +19,16 @@ def render_aggrid(
     # === ĐOẠN CHÈN MỚI: CHUẨN HÓA CỘT NGÀY THÁNG THÀNH TEXT ===
     # Tạo một bản sao để tránh làm ảnh hưởng đến dữ liệu gốc của ứng dụng
     dataframe = dataframe.copy()
+<<<<<<< HEAD
+=======
+    
+>>>>>>> feat-postgres
     # Tự động quét toàn bộ các cột, nếu thấy cột nào là ngày tháng hoặc có tên liên quan, ta ép về dạng chuỗi chỉ có Ngày
     for col in dataframe.columns:
         col_lower = col.lower()
         if "date" in col_lower or "ngay" in col_lower or "created" in col_lower or "updated" in col_lower:
             try:
+<<<<<<< HEAD
                 import pandas as pd
                 # BỔ SUNG: errors='coerce' để tự động biến các ô lỗi/trống thành NaT (không gây crash)
                 # và mixed='infer' để Pandas tự quét nhanh định dạng hỗn hợp mà không đưa ra cảnh báo
@@ -34,6 +39,18 @@ def render_aggrid(
     # ========================================================
     # DEFAULT COLUMN CONFIG (BẬT SAO CHÉP TEXT, BÔI ĐEN RANGE)
     # ========================================================
+=======
+                # Ép kiểu sang datetime rồi chuyển thành chuỗi định dạng YYYY-MM-DD
+                import pandas as pd
+                dataframe[col] = pd.to_datetime(dataframe[col], format="mixed", errors="coerce").dt.strftime('%Y-%m-%d')
+            except Exception:
+                pass # Nếu dòng nào trống hoặc lỗi thì bỏ qua
+    # === HẾT ĐOẠN CHÈN MỚI ===
+
+    # =========================
+    # DEFAULT COLUMN CONFIG (PREMIUM SLATE)
+    # =========================
+>>>>>>> feat-postgres
     gb.configure_default_column(
         sortable=True,
         filter=True,

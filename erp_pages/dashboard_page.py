@@ -104,6 +104,8 @@ def show_dashboard_page():
                 disable_document_notification,
                 disable_payment_notification
             )
+            # 2. 🎯 ĐOẠN SỬA CHÍ MẠNG: Ép xóa sạch cache của chính hàm lấy dữ liệu ngay tại UI
+            st.cache_data.clear()
             st.success("🎉 Order successfully synced!")
             st.rerun()
 
@@ -134,7 +136,7 @@ def show_dashboard_page():
 
     # --- DATA PROCESSING & FILTRATION ---
     all_df = OrderRepository.get_all_orders()
-
+    #st.write("Số lượng đơn hàng thô từ DB chưa lọc:", len(all_df)) # <--- Chèn dòng này vào để check
     all_df["measurement_date"] = pd.to_datetime(
         all_df["measurement_date"],
         errors="coerce"
