@@ -27,9 +27,10 @@ class OtherRevenueRepository:
             expense_date,
             amount,
             note,
-            created_by
+            created_by,
+            created_at
         )
-        VALUES (%s, %s, %s, %s)
+        VALUES (%s, %s, %s, %s, NOW())
         """
         
         params = (revenue_date, amount, note, created_by)

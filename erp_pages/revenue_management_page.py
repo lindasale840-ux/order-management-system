@@ -37,7 +37,7 @@ from utils.excel_export import (
 dataframe_to_excel
 )
 
-def show_revenue_management_page():
+def show_revenue_management_page(current_user="Admin"):
 
 
     st.title(
@@ -273,7 +273,7 @@ def show_revenue_management_page():
 
                 other_revenue_note,
                 
-                current_user # <-- Truyền thêm dòng này vào đây
+                current_user 
             )
 
             st.success(

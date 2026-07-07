@@ -444,7 +444,7 @@ try:
     elif page.startswith("📦 Equipment Tracking"):
         show_equipment_tracking_page()   
     elif page == "💵 Revenue Management":
-        show_revenue_management_page()  
+        show_revenue_management_page(current_user=st.session_state['username'])  
     elif page == "📝 Notes Management":  # <--- THÊM DÒNG NÀY
         show_notes_page()      
     elif page == "📝 Logs":
