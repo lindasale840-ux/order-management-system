@@ -1,8 +1,9 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
-
+import pandas as pd
 from datetime import datetime
+import numpy as np
 
 from services.finance_service import (
 FinanceService
@@ -430,15 +431,17 @@ def show_revenue_management_page():
 
         else 0
     )
+    
+    # Ép kiểu và xử lý an toàn cho biến số đơn lẻ
+    calibration_revenue = pd.to_numeric(calibration_revenue, errors='coerce')
+    external_revenue = pd.to_numeric(external_revenue, errors='coerce')
 
-    total_revenue = (
+    # Nếu biến nào bị chuyển thành NaN (lỗi), ta đổi nó thành số 0 bằng np.nan_to_num
+    calibration_revenue = np.nan_to_num(calibration_revenue)
+    external_revenue = np.nan_to_num(external_revenue)
 
-        calibration_revenue
-
-        +
-
-        external_revenue
-    )
+    # Tính tổng doanh thu bằng 2 biến đã được làm sạch
+    total_revenue = calibration_revenue + external_revenue
 
     col1, col2, col3 = st.columns(3)
 
@@ -930,17 +933,16 @@ def show_revenue_management_page():
                 "officedocument.spreadsheetml.sheet"
             )
         )
-
+    
         st.divider()
 
         expense_options = {
-
             f"ID {row['id']} | "
             f"{row['expense_date']} | "
-            f"{row['amount']:,.0f}":
-
+            f"{float(row['amount'] if row['amount'] and str(row['amount']).strip() else 0):,.0f}": 
+            
             row["id"]
-
+            
             for _, row in other_revenue_df.iterrows()
         }
 
