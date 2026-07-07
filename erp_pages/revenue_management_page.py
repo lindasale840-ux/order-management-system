@@ -297,6 +297,10 @@ def show_revenue_management_page(current_user="Admin"):
     # =========================
     other_revenue_df = OtherRevenueRepository.get_all_revenues()
 
+    # 👉 MẸO ĐỒNG BỘ: Ép tất cả các tên cột từ PostgreSQL về chữ thường để tránh lỗi so khớp
+    if not other_revenue_df.empty:
+        other_revenue_df.columns = [col.lower() for col in other_revenue_df.columns]
+
     current_user = st.session_state.get("username") # 'Chi', 'Linh', 'LINDA', 'TONY', 'Thịnh'...
     current_role = st.session_state.get("role")     # 'Admin', 'Sale', 'User'
 
@@ -307,6 +311,13 @@ def show_revenue_management_page(current_user="Admin"):
     }
 
     if not other_revenue_df.empty and "created_by" in other_revenue_df.columns:
+        # 👉 BẢO HIỂM DỮ LIỆU CŨ: Nếu ô nào trống (NULL), tự động lấp đầy bằng chữ 'Thịnh' trên giao diện để tính toán KPI chuẩn xác
+        other_revenue_df["created_by"] = other_revenue_df["created_by"].fillna("Thịnh")
+        
+        if "created_at" in other_revenue_df.columns:
+            # Nếu ngày tạo bị trống, lấy tạm ngày phát sinh đơn gán vào để không bị lỗi bảng
+            other_revenue_df["created_at"] = other_revenue_df["created_at"].fillna(other_revenue_df["expense_date"])
+
         if current_role != "Admin":
             if current_role == "Sale":
                 # Nếu là Sale (LINDA/TONY): Lấy danh sách các user mình quản lý
@@ -319,7 +330,6 @@ def show_revenue_management_page(current_user="Admin"):
             else:
                 # Nếu là User thường (Chi/Linh/Thịnh): Chỉ nhìn thấy đúng đơn do mình tạo
                 other_revenue_df = other_revenue_df[other_revenue_df["created_by"] == current_user]
-
         # 2. Lọc đồng bộ theo Hộp chọn "Assistant" ở đầu trang
         if selected_assistant != "ALL":
             other_revenue_df = other_revenue_df[other_revenue_df["created_by"] == selected_assistant]
@@ -419,18 +429,20 @@ def show_revenue_management_page(current_user="Admin"):
         .sum()
     )
 
-    external_revenue = (
+    # Tìm chính xác tên cột chứa số tiền (chấp nhận cả 'amount' hoặc 'Amount')
+    amount_col = None
+    if not other_revenue_df.empty:
+        for col in other_revenue_df.columns:
+            if col.lower() == 'amount':
+                amount_col = col
+                break
 
-        other_revenue_df["amount"]
-
-        .fillna(0)
-
-        .sum()
-
-        if not other_revenue_df.empty
-
-        else 0
-    )
+    # Tính toán doanh thu khác an toàn 100%
+    if not other_revenue_df.empty and amount_col is not None:
+        # Ép kiểu dữ liệu về dạng số trước khi sum để tránh lỗi trống dữ liệu
+        external_revenue = pd.to_numeric(other_revenue_df[amount_col], errors='coerce').fillna(0).sum()
+    else:
+        external_revenue = 0
     
     # Ép kiểu và xử lý an toàn cho biến số đơn lẻ
     calibration_revenue = pd.to_numeric(calibration_revenue, errors='coerce')

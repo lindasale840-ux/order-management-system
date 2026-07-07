@@ -20,7 +20,7 @@ class OtherRevenueRepository:
         revenue_date,
         amount,
         note,
-        created_by="System"
+        created_by
     ):
         query = """
         INSERT INTO external_expenses (
