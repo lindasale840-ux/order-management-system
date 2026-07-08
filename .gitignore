@@ -13,3 +13,4 @@ database/app.db-shm
 # Streamlit
 .streamlit/
 .streamlit/config.toml
+database/pg_database.py
