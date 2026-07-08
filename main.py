@@ -57,7 +57,7 @@ def _(key):
     # Nếu tìm thấy key trong ngôn ngữ đã chọn thì trả về, không thì trả về chính cái key hoặc chuỗi gốc tiếng Anh làm dự phòng
     return LANGUAGES.get(lang, {}).get(key, LANGUAGES["en"].get(key, key))
 # ========================================================
-# KST: 🔒 KIỂM TRA GIỚI HẠN SỐ LƯỢNG NGƯỜI TRUY CẬP (MAX 4)
+# KST: 🔒 KIỂM TRA GIỚI HẠN SỐ LƯỢNG NGƯỜI TRUY CẬP (MAX 8)
 # ========================================================
 try:
     runtime = get_instance()
@@ -65,8 +65,8 @@ try:
         # Lấy danh sách toàn bộ các tab trình duyệt đang kết nối đến ERP
         active_sessions = runtime._session_mgr.list_active_sessions()
         
-        # Nếu đã có từ 4 người đang kết nối TRỞ LÊN, và trình duyệt hiện tại CHƯA đăng nhập
-        if len(active_sessions) > 4 and not st.session_state.get("logged_in", False):
+        # Nếu đã có từ 8 người đang kết nối TRỞ LÊN, và trình duyệt hiện tại CHƯA đăng nhập
+        if len(active_sessions) > 8 and not st.session_state.get("logged_in", False):
             st.markdown("""
                 <div style="text-align: center; margin-top: 100px; font-family: 'Inter', sans-serif;">
                     <h1 style="color: #ef4444; font-size: 50px;">⚠️ HỆ THỐNG QUÁ TẢI</h1>
