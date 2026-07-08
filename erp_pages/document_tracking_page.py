@@ -11,6 +11,7 @@ from services.other_document_tracking_service import OtherDocumentTrackingServic
 from utils.data_permission import filter_by_sale_owner
 # Chỉ cần import đúng 1 dòng này từ file languages
 from languages import t
+
 def show_document_tracking_page():
     require_editor()
 
@@ -128,6 +129,25 @@ def show_document_tracking_page():
         h_sliced_df = history_display.iloc[h_start : h_start + h_rows_per_page]
         
         render_aggrid(h_sliced_df, height=220, page_size=h_rows_per_page, pagination=False, key="tracking_history_grid")
+
+        # --- YÊU CẦU 1: XOÁ CHI TIẾT LỊCH SỬ CHO BẢNG 1 ---
+        st.write("🗑️ **Xóa bản ghi sai sót khỏi lịch sử đơn đang chọn:**")
+        
+        # Tạo danh sách drop-down nhỏ gọn cho riêng đơn hàng này
+        h_delete_options = {
+            f"ID {row['id']} | Sent: {row['sent_date']} | Note: {row['note']}": row["id"] 
+            for _, row in history_display.iterrows()
+        }
+        
+        col_del1, col_del2 = st.columns([8, 2])
+        with col_del1:
+            selected_h_delete = st.selectbox("Chọn dòng cần xóa:", list(h_delete_options.keys()), key="h_delete_select_box", label_visibility="collapsed")
+        with col_del2:
+            if st.button("Xóa dòng", use_container_width=True, key="h_delete_btn", type="secondary"):
+                # Gọi thẳng xuống Service có sẵn, tầng DB tự động clearing cache dữ liệu
+                DocumentTrackingService.delete_tracking(h_delete_options[selected_h_delete])
+                st.success("Đã xóa dòng lịch sử thành công!")
+                st.rerun()
     else:
         st.info(t("no_localized_operational_track"))
     
@@ -181,15 +201,32 @@ def show_document_tracking_page():
 
         st.divider()
         # --- MÔ-ĐUN XÓA LOG BẢNG CHÍNH ---
-        delete_options = {
+        # --- YÊU CẦU 2: THÊM Ô LỌC ĐỂ KHÔNG PHẢI CHỌN DROPDOWN KHÓ KHĂN ---
+        st.write(f"⚠️ **{t('select_target_master_tracking')}**")
+        
+        # Ô nhập từ khóa lọc thông minh trước khi chọn xóa
+        search_delete_text = st.text_input("🔍 Gõ Mã đơn hàng hoặc ID để tìm kiếm bản ghi cần xóa:", key="search_delete_master_input")
+        
+        # Khởi tạo dict map dữ liệu gốc
+        raw_delete_options = {
             f"ID {row['id']} | {row['order_number']} | Sent: {row['sent_date']}": row["id"] for _, row in tracking_df.iterrows()
         }
-        selected_delete = st.selectbox(t("select_target_master_tracking"), list(delete_options.keys()))
         
-        if st.button(t("purge_selected_tracking_entry"), use_container_width=True):
-            DocumentTrackingService.delete_tracking(delete_options[selected_delete])
-            st.success(t("entry_safely_extracted_and_dro"))
-            st.rerun()
+        # Áp dụng bộ lọc text nếu sếp nhập từ khóa
+        if search_delete_text:
+            delete_options = {k: v for k, v in raw_delete_options.items() if search_delete_text.lower() in k.lower()}
+        else:
+            delete_options = raw_delete_options
+
+        # Hiển thị giao diện dựa trên kết quả lọc
+        if delete_options:
+            selected_delete = st.selectbox("Kết quả tìm kiếm dòng cần xóa:", list(delete_options.keys()), label_visibility="collapsed")
+            if st.button(t("purge_selected_tracking_entry"), use_container_width=True):
+                DocumentTrackingService.delete_tracking(delete_options[selected_delete])
+                st.success(t("entry_safely_extracted_and_dro"))
+                st.rerun()
+        else:
+            st.info("Không tìm thấy dữ liệu tracking nào khớp với từ khóa để xóa.")
         
    # --- PHẦN KHỐI NHẬP LIỆU AD-HOC ---
     st.divider()
@@ -206,6 +243,7 @@ def show_document_tracking_page():
 
         if other_received:
             other_received_date = None
+            st.info("💡 Trạng thái Ad-hoc: Đang chuyển phát (Chưa ký nhận)") # Đã thêm thông báo trạng thái trực quan
         else:
             other_received_date = st.date_input(t("external_item_received_date_st"), key="other_received")
 
@@ -228,8 +266,8 @@ def show_document_tracking_page():
             other_sent_date,
             other_received_date,
             other_note,
-            current_username,    # Truyền thêm username vào Service/Repository
-            current_sale_owner   # Truyền thêm sale_owner vào Service/Repository
+            current_username,    
+            current_sale_owner   
         )
         st.success(t("miscellaneous_ad_hoc_tracking"))
         st.rerun()  
@@ -241,11 +279,20 @@ def show_document_tracking_page():
     # Lấy dữ liệu thô từ DB lên
     raw_other_tracking_df = OtherDocumentTrackingRepository.get_all()
 
-    # ÁP DỤNG HÀM PHÂN QUYỀN CỦA BẠN VÀO ĐÂY
-    # Giả định bạn đã import hàm `filter_by_sale_owner` ở đầu file này rồi nhé
+    # ÁP DỤNG HÀM PHÂN QUYỀN
     other_tracking_df = filter_by_sale_owner(raw_other_tracking_df)
 
     if not other_tracking_df.empty:
+        # --- YÊU CẦU 3: BỘ LỌC TOÀN DIỆN SEARCH ĐƯỢC CẢ NOTE CHO BẢNG 3 ---
+        search_text_adhoc = st.text_input("🔍 Ô tìm kiếm nhanh cho Ad-hoc (Copy text hoặc gõ từ khóa, tìm kiếm trên mọi cột kể cả Note):", key="search_adhoc_input")
+        
+        if search_text_adhoc:
+            keyword_adhoc = search_text_adhoc.lower()
+            # Kỹ thuật ép kiểu chuỗi toàn bộ dataframe để .contains tìm được cả note, ngày tháng, text...
+            other_tracking_df = other_tracking_df[
+                other_tracking_df.astype(str).apply(lambda col: col.str.lower()).apply(lambda col: col.str.contains(keyword_adhoc, na=False)).any(axis=1)
+            ]
+
         col_o1, col_o2, col_o3 = st.columns([2, 2, 6])
         with col_o1:
             o_rows_per_page = st.selectbox(
@@ -267,5 +314,24 @@ def show_document_tracking_page():
         o_sliced_df = other_tracking_df.iloc[o_start : o_start + o_rows_per_page]
 
         render_aggrid(o_sliced_df, height=250, page_size=o_rows_per_page, pagination=False, key="other_tracking_grid")
+        
+        # --- BONUS THÊM QUẢN LÝ / XÓA LOG BẢNG AD-HOC (NẾU CÓ CỘT ID) ---
+        if "id" in other_tracking_df.columns:
+            st.write("⚙️ **Xóa dữ liệu Ad-hoc lỗi:**")
+            adhoc_delete_options = {
+                f"ID {row['id']} | Khách: {row.get('customer_name', row.get('customer', ''))} | Loại: {row.get('document_type', '')}": row["id"] 
+                for _, row in other_tracking_df.iterrows()
+            }
+            col_ao_del1, col_ao_del2 = st.columns([8, 2])
+            with col_ao_del1:
+                selected_ao_delete = st.selectbox("Chọn dòng ad-hoc cần hủy:", list(adhoc_delete_options.keys()), key="ao_delete_select", label_visibility="collapsed")
+            with col_ao_del2:
+                if st.button("Xóa Ad-hoc", use_container_width=True, key="ao_delete_btn"):
+                    if hasattr(OtherDocumentTrackingService, 'delete_tracking'):
+                        OtherDocumentTrackingService.delete_tracking(adhoc_delete_options[selected_ao_delete])
+                        st.success("Đã triệt tiêu dữ liệu Ad-hoc được chọn và cập nhật hệ thống thành công!")
+                        st.rerun()
+                    else:
+                        st.warning("Tính năng xóa Ad-hoc chưa được khai báo ở backend Service.")
     else:
         st.info(t("no_external_miscellaneous_ad_h"))
