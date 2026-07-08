@@ -1,20 +1,40 @@
+import os
 import psycopg2
 from psycopg2.extras import RealDictCursor
 import streamlit as st
 import warnings
+from dotenv import load_dotenv
+from urllib.parse import urlparse
+
 warnings.filterwarnings("ignore", category=UserWarning, module="pandas")
 
 # =====================================================================
-# 1. CẤU HÌNH THÔNG TIN KẾT NỐI (MÁY LOCAL CỦA BẠN)
+# 1. TỰ ĐỘNG CẤU HÌNH THÔNG TIN KẾT NỐI TỪ FILE .env
 # =====================================================================
-DB_HOST = "localhost"
-DB_PORT = "5432"
-DB_NAME = "erp_production"  # Tên database bạn tạo ở bước 4 lúc nãy
-DB_USER = "postgres"          # Tài khoản mặc định tối cao của Postgres
-DB_PASS = "famille123"            # Hãy thay bằng mật khẩu bạn đã đặt khi cài đặt nhé!
+# Nạp các biến môi trường từ file .env
+load_dotenv()
+
+# Đọc chuỗi kết nối DATABASE_URL từ file .env
+DATABASE_URL = os.getenv("DATABASE_URL")
+
+if DATABASE_URL:
+    # Tự động bóc tách chuỗi URL thành các thông số riêng lẻ để tương thích với logic cũ
+    parsed_url = urlparse(DATABASE_URL)
+    DB_HOST = parsed_url.hostname or "localhost"
+    DB_PORT = str(parsed_url.port) or "5432"
+    DB_NAME = parsed_url.path.lstrip("/") or "erp_production"
+    DB_USER = parsed_url.username or "postgres"
+    DB_PASS = parsed_url.password or ""
+else:
+    # Cấu hình dự phòng (Fallback) nếu không tìm thấy file .env
+    DB_HOST = "localhost"
+    DB_PORT = "5432"
+    DB_NAME = "erp_production"
+    DB_USER = "postgres"
+    DB_PASS = "famille123"
 
 # =====================================================================
-# 2. CÁC HÀM TIÊU CHUẨN ĐỂ THAO TÁC VỚI DATABASE
+# 2. CÁC HÀM TIÊU CHUẨN ĐỂ THAO TÁC VỚI DATABASE (GIỮ NGUYÊN LOGIC)
 # =====================================================================
 
 def get_pg_connection():
@@ -40,12 +60,6 @@ def init_pg_db():
         conn.close()
     else:
         print("💀 Kết nối thất bại. Hãy kiểm tra lại thông tin cấu hình.")
-
-# Bạn có thể thêm các hàm thực thi câu lệnh SQL dùng chung ở đây sau này
-
-# Chèn đoạn này vào cuối file pg_database.py của bạn:
-
-
 
 def execute_pg_query(query, params=None):
     import pandas as pd
@@ -88,7 +102,6 @@ def execute_pg_query(query, params=None):
         if conn:
             conn.close()
         
-        
 def query_pg_to_dataframe(sql, params=None):
     """
     Hàm đọc dữ liệu từ Postgres và trả về một chiếc Pandas Dataframe chuẩn chỉnh.
@@ -111,34 +124,23 @@ def query_pg_to_dataframe(sql, params=None):
             
 def export_pg_backup():
     """Hàm xuất toàn bộ cấu trúc và dữ liệu PostgreSQL thành dạng chuỗi văn bản (SQL Script)"""
-    import io
     conn = get_pg_connection()
     if not conn:
         return None
     try:
-        # Sử dụng sub-process hoặc giải pháp loop qua từng bảng để tạo file SQL
-        # Để đơn giản và không phụ thuộc vào tool ngoài, ta đọc trực tiếp cấu trúc
-        # Tuy nhiên cách nhanh nhất là dùng pg_dump nếu máy có cài, hoặc tạo script backup.
-        # Ở đây ta sẽ giả định tạo nội dung text SQL hoặc dùng thư viện có sẵn:
-        
-        # Mẹo: Cách an toàn nhất không lỗi font là xuất dữ liệu thông qua pg_dump script của Postgres.
-        # Nhưng để app Streamlit tự chạy độc lập mượt mà, ta sử dụng câu lệnh kết nối:
         import subprocess
         # Gọi lệnh pg_dump tích hợp sẵn của Postgres
         command = f'"C:\\Program Files\\PostgreSQL\\18\\bin\\pg_dump.exe" -h {DB_HOST} -p {DB_PORT} -U {DB_USER} -d {DB_NAME} --clean'
-        # Lưu ý: Postgres sẽ đòi mật khẩu, ta truyền mật khẩu qua biến môi trường PGPASSWORD
+        
         import os
         env = os.environ.copy()
         env["PGPASSWORD"] = DB_PASS
         
-        # BẠN SỬA LẠI THÀNH ĐOẠN NÀY (Bỏ text=True và thêm errors='ignore' để ép kiểu an toàn):
         result = subprocess.run(command, shell=True, capture_output=True, env=env)
 
         if result.returncode == 0:
-            # Trả về trực tiếp dữ liệu dạng bytes dạng utf-8 mà không qua bộ giải mã của Windows
             return result.stdout
         else:
-            # Nếu lỗi, ta decode bằng utf-8 và bỏ qua ký tự lỗi để in ra log
             error_msg = result.stderr.decode('utf-8', errors='ignore')
             print(f"❌ Lỗi pg_dump: {error_msg}")
             return None
@@ -146,4 +148,4 @@ def export_pg_backup():
         print(f"❌ Lỗi khi tạo bản sao lưu Postgres: {e}")
         return None
     finally:
-        conn.close()        
+        conn.close()
