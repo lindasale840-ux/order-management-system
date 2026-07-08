@@ -51,3 +51,15 @@ class OtherDocumentTrackingRepository:
         """
         execute_pg_query(query, (record_id,))
         st.cache_data.clear()
+        
+    # === HÀM THÊM MỚI ĐỂ CẬP NHẬT NGÀY NHẬN HỒ SƠ AD-HOC ===
+    @staticmethod
+    def update_received_date(record_id, received_date):
+        query = """
+        UPDATE other_document_tracking
+        SET received_date = %s
+        WHERE id = %s
+        """
+        params = (received_date, record_id)
+        execute_pg_query(query, params)
+        st.cache_data.clear() # Xóa cache để giao diện tải lại data mới lập tức    

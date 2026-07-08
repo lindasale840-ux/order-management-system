@@ -283,12 +283,73 @@ def show_document_tracking_page():
     other_tracking_df = filter_by_sale_owner(raw_other_tracking_df)
 
     if not other_tracking_df.empty:
+        
+        # --- TÍNH NĂNG MỚI: BỘ LỌC CẢNH BÁO VÀ CẬP NHẬT HÀNG LOẠT (BẢO VỆ HIỆU NĂNG) ---
+        try:
+            # Sao chép dataframe để tính toán cảnh báo động
+            alert_df = other_tracking_df.copy()
+            
+            # Ép kiểu ngày gửi về datetime
+            alert_df["sent_date_dt"] = pd.to_datetime(alert_df["sent_date"], errors="coerce")
+            today_dt = pd.Timestamp.today().normalize()
+            
+            # Lọc: Những dòng chưa có received_date VÀ đã quá hạn >= 5 ngày
+            overdue_mask = (
+                (alert_df["received_date"].isna() | (alert_df["received_date"] == "")) & 
+                ((today_dt - alert_df["sent_date_dt"]).dt.days >= 5)
+            )
+            overdue_df = alert_df[overdue_mask]
+            
+            if not overdue_df.empty:
+                st.error(f"🚨 **CẢNH BÁO: Có {len(overdue_df)} tài liệu Ad-hoc quá hạn 5 ngày chưa được trả lại!**")
+                
+                # Hiển thị danh sách rút gọn bằng bảng markdown để sếp theo dõi trực quan (Không tốn tài nguyên render)
+                with st.expander("👉 Xem chi tiết danh sách tài liệu trễ hạn trả", expanded=False):
+                    for _, row in overdue_df.iterrows():
+                        days_late = (today_dt - row["sent_date_dt"]).days
+                        customer = row.get('customer_name', row.get('customer', 'N/A'))
+                        doc_type = row.get('document_type', 'N/A')
+                        st.markdown(f"• 🔴 **Khách:** {customer} | **Loại:** {doc_type} | **Gửi:** {row['sent_date']} *(Trễ {days_late} ngày)*")
+                
+                # --- GIẢI PHÁP 1 & 2: MULTISELECT & BATCH UPDATE ĐỂ CHỐNG LAG RERUN ---
+                st.caption("⚡ **Xử lý nhanh hàng loạt hồ sơ đã thu hồi (Không lo lag trang):**")
+                
+                # Tạo map lựa chọn: Hiển thị tên trực quan -> Trả về ID dữ liệu
+                overdue_options = {
+                    f"ID {row['id']} | Khách: {row.get('customer_name', row.get('customer', 'N/A'))} | Loại: {row.get('document_type', 'N/A')}": row['id']
+                    for _, row in overdue_df.iterrows()
+                }
+                
+                # Cho phép sếp chọn nhiều đơn cùng lúc trong 1 ô duy nhất
+                selected_overdue_labels = st.multiselect(
+                    "Chọn các hồ sơ đã thu hồi thành công:",
+                    options=list(overdue_options.keys()),
+                    placeholder="Bấm vào đây để chọn một hoặc nhiều hồ sơ...",
+                    key="batch_receive_multiselect"
+                )
+                
+                if selected_overdue_labels:
+                    # Nút bấm xử lý cho toàn bộ danh sách đã chọn
+                    if st.button(f"✅ Xác nhận đã thu hồi {len(selected_overdue_labels)} hồ sơ đã chọn", use_container_width=True, type="primary"):
+                        with st.spinner("🚀 Hệ thống đang cập nhật hàng loạt dưới Database..."):
+                            # Vòng lặp cập nhật ngầm trong bộ nhớ, KHÔNG gây rerun giữa chừng
+                            for label in selected_overdue_labels:
+                                target_id = overdue_options[label]
+                                OtherDocumentTrackingRepository.update_received_date(target_id, today_dt.date())
+                        
+                        # Bắn thông báo tổng và CHỈ RERUN ĐÚNG 1 LẦN DUY NHẤT TẠI ĐÂY
+                        st.success(f"Đã cập nhật hoàn thành thành công cho {len(selected_overdue_labels)} hồ sơ!")
+                        st.rerun()
+                        
+        except Exception as alert_error:
+            # Đảm bảo bẫy lỗi an toàn tuyệt đối cho luồng UI
+            pass
+            
         # --- YÊU CẦU 3: BỘ LỌC TOÀN DIỆN SEARCH ĐƯỢC CẢ NOTE CHO BẢNG 3 ---
         search_text_adhoc = st.text_input("🔍 Ô tìm kiếm nhanh cho Ad-hoc (Copy text hoặc gõ từ khóa, tìm kiếm trên mọi cột kể cả Note):", key="search_adhoc_input")
         
         if search_text_adhoc:
             keyword_adhoc = search_text_adhoc.lower()
-            # Kỹ thuật ép kiểu chuỗi toàn bộ dataframe để .contains tìm được cả note, ngày tháng, text...
             other_tracking_df = other_tracking_df[
                 other_tracking_df.astype(str).apply(lambda col: col.str.lower()).apply(lambda col: col.str.contains(keyword_adhoc, na=False)).any(axis=1)
             ]
