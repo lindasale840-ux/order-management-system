@@ -1,1 +1,1 @@
-packages.txt
+postgresql-client
