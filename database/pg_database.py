@@ -3,57 +3,66 @@ import psycopg2
 from psycopg2.extras import RealDictCursor
 import streamlit as st
 import warnings
-from dotenv import load_dotenv
-from urllib.parse import urlparse
 
 warnings.filterwarnings("ignore", category=UserWarning, module="pandas")
 
 # =====================================================================
-# 1. TỰ ĐỘNG CẤU HÌNH THÔNG TIN KẾT NỐI TỪ FILE .env
-# =====================================================================
-# Nạp các biến môi trường từ file .env
-load_dotenv()
-
-# Đọc chuỗi kết nối DATABASE_URL từ file .env
-DATABASE_URL = os.getenv("DATABASE_URL")
-
-if DATABASE_URL:
-    # Tự động bóc tách chuỗi URL thành các thông số riêng lẻ để tương thích với logic cũ
-    parsed_url = urlparse(DATABASE_URL)
-    DB_HOST = parsed_url.hostname or "localhost"
-    DB_PORT = str(parsed_url.port) or "5432"
-    DB_NAME = parsed_url.path.lstrip("/") or "erp_production"
-    DB_USER = parsed_url.username or "postgres"
-    DB_PASS = parsed_url.password or ""
-else:
-    # Cấu hình dự phòng (Fallback) nếu không tìm thấy file .env
-    DB_HOST = "localhost"
-    DB_PORT = "5432"
-    DB_NAME = "erp_production"
-    DB_USER = "postgres"
-    DB_PASS = "famille123"
-
-# =====================================================================
-# 2. CÁC HÀM TIÊU CHUẨN ĐỂ THAO TÁC VỚI DATABASE (GIỮ NGUYÊN LOGIC)
+# 1. QUẢN LÝ KẾT NỐI THEO CHUẨN KẾT NỐI TRUYỀN THỐNG (TƯƠNG THÍCH 100% CODE CŨ)
 # =====================================================================
 
 def get_pg_connection():
-    """Hàm khởi tạo kết nối đến PostgreSQL"""
+    """
+    Hàm khởi tạo kết nối PostgreSQL thông minh.
+    Ưu tiên đọc file .env ở Local trước để phục vụ đội ngũ dev, 
+    chỉ đọc st.secrets khi triển khai thực tế trên Production Cloud.
+    """
     try:
-        conn = psycopg2.connect(
-            host=DB_HOST,
-            port=DB_PORT,
-            database=DB_NAME,
-            user=DB_USER,
-            password=DB_PASS
-        )
-        return conn
+        # 1. Nạp file .env cũ dưới local lên trước
+        from dotenv import load_dotenv
+        load_dotenv()
+        db_url = os.getenv("DATABASE_URL")
+        
+        # 2. Nếu file .env không tồn tại (trên Cloud), lúc này mới dùng đến st.secrets
+        if not db_url:
+            if "connections" in st.secrets and "postgresql" in st.secrets["connections"]:
+                db_url = st.secrets["connections"]["postgresql"]["url"]
+            elif "DATABASE_URL" in st.secrets:
+                db_url = st.secrets["DATABASE_URL"]
+                
+        # Trả về kết nối psycopg2 thuần túy
+        return psycopg2.connect(db_url)
     except Exception as e:
         st.error(f"❌ Lỗi kết nối PostgreSQL: {e}")
-        return None
+        return None 
+# Hàm phụ trợ tách cấu hình phục vụ riêng cho lệnh pg_dump (Hàm backup)
+from urllib.parse import urlparse
+def _get_db_credentials():
+    try:
+        from dotenv import load_dotenv
+        load_dotenv()
+        url = os.getenv("DATABASE_URL")
+        
+        if not url:
+            if "connections" in st.secrets and "postgresql" in st.secrets["connections"]:
+                url = st.secrets["connections"]["postgresql"]["url"]
+            elif "DATABASE_URL" in st.secrets:
+                url = st.secrets["DATABASE_URL"]
+                
+        parsed_url = urlparse(url)
+        return {
+            "host": parsed_url.hostname or "localhost",
+            "port": str(parsed_url.port) or "5432",
+            "name": parsed_url.path.lstrip("/") or "erp_production",
+            "user": parsed_url.username or "postgres",
+            "pass": parsed_url.password or ""
+        }
+    except Exception:
+        return {"host": "localhost", "port": "5432", "name": "erp_production", "user": "postgres", "pass": ""}
+# =====================================================================
+# 2. CÁC HÀM TIÊU CHUẨN THAO TÁC DATA (GIỮ NGUYÊN HOÀN TOÀN CẤU TRÚC CỦA BẠN)
+# =====================================================================
 
 def init_pg_db():
-    """Hàm kiểm tra kết nối đầu vào (Chạy thử khi khởi động ứng dụng)"""
     conn = get_pg_connection()
     if conn:
         print("🎉 Kết nối thành công đến PostgreSQL!")
@@ -63,8 +72,6 @@ def init_pg_db():
 
 def execute_pg_query(query, params=None):
     import pandas as pd
-    
-    # 1. TỰ ĐỘNG ÉP KIỂU CHO TOÀN HỆ THỐNG:
     if params:
         new_params = []
         for p in params:
@@ -79,18 +86,14 @@ def execute_pg_query(query, params=None):
     conn = None
     try:
         conn = get_pg_connection() 
-        # ĐỔI THÀNH SỬ DỤNG RealDictCursor ĐỂ LẤY DỮ LIỆU DẠNG KEY-VALUE
         cur = conn.cursor(cursor_factory=RealDictCursor)
         cur.execute(query, params)
         
-        # Lấy dữ liệu nếu đây là câu lệnh SELECT
         result = None
         if cur.description: 
             result = cur.fetchall()
         
-        # Đảm bảo LUÔN commit để Postgres lưu dữ liệu thực tế
         conn.commit() 
-        
         cur.close()
         return result 
         
@@ -100,42 +103,32 @@ def execute_pg_query(query, params=None):
         raise e 
     finally:
         if conn:
-            conn.close()
-        
+            conn.close() # Đóng kết nối an toàn đúng như logic cũ của bạn yêu cầu
+
 def query_pg_to_dataframe(sql, params=None):
-    """
-    Hàm đọc dữ liệu từ Postgres và trả về một chiếc Pandas Dataframe chuẩn chỉnh.
-    """
     import pandas as pd
-    
     try:
-        # 1. Lấy dữ liệu dạng danh sách các Dictionary nhờ có RealDictCursor
         data = execute_pg_query(sql, params)
-        
-        # 2. Chuyển thẳng danh sách Dictionary thành DataFrame (Tên cột tự động nhận diện chính xác)
         if data:
             return pd.DataFrame(data)
         else:
             return pd.DataFrame()
-            
     except Exception as e:
         print(f"❌ Lỗi truy vấn Dataframe từ Postgres: {e}")
         return pd.DataFrame()
             
 def export_pg_backup():
-    """Hàm xuất toàn bộ cấu trúc và dữ liệu PostgreSQL thành dạng chuỗi văn bản (SQL Script)"""
-    conn = get_pg_connection()
-    if not conn:
-        return None
+    creds = _get_db_credentials()
     try:
         import subprocess
-        # Gọi lệnh pg_dump tích hợp sẵn của Postgres
-        command = f'"C:\\Program Files\\PostgreSQL\\18\\bin\\pg_dump.exe" -h {DB_HOST} -p {DB_PORT} -U {DB_USER} -d {DB_NAME} --clean'
+        import platform
+        if platform.system() == "Windows":
+            command = f'"C:\\Program Files\\PostgreSQL\\18\\bin\\pg_dump.exe" -h {creds["host"]} -p {creds["port"]} -U {creds["user"]} -d {creds["name"]} --clean'
+        else:
+            command = f'pg_dump -h {creds["host"]} -p {creds["port"]} -U {creds["user"]} -d {creds["name"]} --clean'
         
-        import os
         env = os.environ.copy()
-        env["PGPASSWORD"] = DB_PASS
-        
+        env["PGPASSWORD"] = creds["pass"]
         result = subprocess.run(command, shell=True, capture_output=True, env=env)
 
         if result.returncode == 0:
@@ -147,5 +140,3 @@ def export_pg_backup():
     except Exception as e:
         print(f"❌ Lỗi khi tạo bản sao lưu Postgres: {e}")
         return None
-    finally:
-        conn.close()
