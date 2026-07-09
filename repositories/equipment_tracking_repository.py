@@ -3,19 +3,25 @@ import streamlit as st
 from sqlalchemy import text
 from database.connection import engine
 from utils.datetime_utils import convert_utc_columns
-
+from database.pg_database import get_pg_connection
 class EquipmentTrackingRepository:
 
     @staticmethod
     @st.cache_data(ttl=30)
     def get_all():
-        query = """
-        SELECT *
-        FROM equipment_tracking
-        ORDER BY id DESC
-        """
-        df = pd.read_sql(query, engine)
-        return convert_utc_columns(df)
+        query = "SELECT * FROM equipment_tracking" # Giữ nguyên câu SQL cũ của bạn
+        
+        # Lấy kết nối thuần túy (tự động nhận biết Local/.env hay Cloud/Secrets)
+        conn = get_pg_connection()
+        try:
+            df = pd.read_sql(query, conn)
+            return df
+        except Exception as e:
+            print(f"Lỗi đọc dữ liệu: {e}")
+            return pd.DataFrame()
+        finally:
+            if conn:
+                conn.close() # Đóng kết nối an toàn để giải phóng bộ nhớ
 
     @staticmethod
     def add_tracking(

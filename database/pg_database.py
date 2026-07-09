@@ -5,7 +5,8 @@ import streamlit as st
 import warnings
 
 warnings.filterwarnings("ignore", category=UserWarning, module="pandas")
-
+warnings.filterwarnings("ignore", category=UserWarning, module="pandas")
+warnings.filterwarnings("ignore", message=".*pandas only supports SQLAlchemy connectable.*")
 # =====================================================================
 # 1. QUẢN LÝ KẾT NỐI THEO CHUẨN KẾT NỐI TRUYỀN THỐNG (TƯƠNG THÍCH 100% CODE CŨ)
 # =====================================================================
