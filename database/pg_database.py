@@ -3,6 +3,9 @@ import psycopg2
 from psycopg2.extras import RealDictCursor
 import streamlit as st
 import warnings
+import time
+GLOBAL_SQL_CACHE = {}
+CACHE_TTL = 15  # Thời gian lưu dữ liệu (30 giây). Bạn có thể tăng lên 30 nếu muốn nhanh hơn nữa
 
 warnings.filterwarnings("ignore", category=UserWarning, module="pandas")
 warnings.filterwarnings("ignore", category=UserWarning, module="pandas")
@@ -73,6 +76,9 @@ def init_pg_db():
 
 def execute_pg_query(query, params=None):
     import pandas as pd
+    global GLOBAL_SQL_CACHE
+    
+    # Chuẩn hóa params để tránh lỗi dữ liệu của bạn
     if params:
         new_params = []
         for p in params:
@@ -83,6 +89,24 @@ def execute_pg_query(query, params=None):
             else:
                 new_params.append(p)
         params = tuple(new_params)
+
+    # ------------------------------------------------------------------
+    # CƠ CHẾ SỰ KIỆN CACHE TỰ ĐỘNG (BÍ QUYẾT TĂNG TỐC TỪ SENIOR)
+    # ------------------------------------------------------------------
+    is_select = query.strip().upper().startswith("SELECT")
+    cache_key = (query, params)
+    current_time = time.time()
+    
+    # Nếu là lệnh ĐỌC (SELECT) và đã có trong bộ nhớ đệm chưa quá 15 giây -> Trả về luôn!
+    if is_select and cache_key in GLOBAL_SQL_CACHE:
+        cached_result, timestamp = GLOBAL_SQL_CACHE[cache_key]
+        if current_time - timestamp < CACHE_TTL:
+            return cached_result # Tốc độ 0.01 giây, không tốn băng thông sang Singapore
+            
+    # Nếu là lệnh GHI (INSERT, UPDATE, DELETE) -> Xóa sạch cache cũ để tránh sai lệch dữ liệu mới
+    if not is_select:
+        GLOBAL_SQL_CACHE.clear()
+    # ------------------------------------------------------------------
 
     conn = None
     try:
@@ -96,6 +120,11 @@ def execute_pg_query(query, params=None):
         
         conn.commit() 
         cur.close()
+        
+        # Nếu là lệnh SELECT thành công, lưu lại vào kho Cache
+        if is_select:
+            GLOBAL_SQL_CACHE[cache_key] = (result, current_time)
+            
         return result 
         
     except Exception as e:
@@ -104,7 +133,7 @@ def execute_pg_query(query, params=None):
         raise e 
     finally:
         if conn:
-            conn.close() # Đóng kết nối an toàn đúng như logic cũ của bạn yêu cầu
+            conn.close()
 
 def query_pg_to_dataframe(sql, params=None):
     import pandas as pd
