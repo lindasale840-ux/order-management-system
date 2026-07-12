@@ -29,7 +29,7 @@ from erp_pages.trash_bin_page import show_trash_bin_page
 from erp_pages.ownership_transfer_page import show_ownership_transfer_page
 from erp_pages.notes_page import show_notes_page
 from database.pg_database import init_pg_db
-
+from erp_pages.document_accounting_page import show_document_accounting_page
 # =========================
 # INIT DATABASE
 # =========================
@@ -362,6 +362,7 @@ if role == "ADMIN":
         "📑 Finance",
         f"🔔 Notification Center ({alert_count})",
         "📨 Document Tracking",
+        "📑 Bàn Giao Kế Toán",
         f"📦 Equipment Tracking ({equipment_alert_count})",
         "💵 Revenue Management",
         "📝 Notes Management",
@@ -384,6 +385,7 @@ elif role == "ASSISTANT":
         "📑 Finance",
         f"🔔 Notification Center ({alert_count})",
         "📨 Document Tracking",
+        "📑 Bàn Giao Kế Toán",
         f"📦 Equipment Tracking ({equipment_alert_count})",
         "💵 Revenue Management",
         "📝 Notes Management",
@@ -394,6 +396,7 @@ elif role == "SALE":
     menu_options = [
         "⚠️ Overdue",
         "📑 Finance",
+        "📑 Bàn Giao Kế Toán",
         f"🔔 Notification Center ({alert_count})",
         "📈 Analytics Dashboard",
         "💵 Revenue Management",
@@ -440,7 +443,9 @@ try:
     elif page == "📈 Analytics Dashboard" and ENABLE_CHART_PAGE:
         show_chart_customer_page()
     elif page == "📨 Document Tracking":
-        show_document_tracking_page()    
+        show_document_tracking_page()
+    elif page == "📑 Bàn Giao Kế Toán": # <--- THÊM KHỐI ĐIỀU HƯỚNG NÀY
+        show_document_accounting_page()
     elif page.startswith("📦 Equipment Tracking"):
         show_equipment_tracking_page()   
     elif page == "💵 Revenue Management":
