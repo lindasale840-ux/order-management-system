@@ -79,7 +79,7 @@ def show_document_accounting_page():
             else:
                 actual_overdue_count = len(display_pending[display_pending["days_delayed"] >= 3])
                 if actual_overdue_count > 0:
-                    st.error(f"🚨 **CẢNH BÁO: Phát hiện {actual_overdue_count} đơn hàng chờ gửi đã quá hạn trên 3 ngày!**")
+                    st.error(f"🚨 **CẢNH BÁO: Phân tích phát hiện {actual_overdue_count} đơn hàng chờ gửi đã quá hạn trên 3 ngày!**")
                 
                 grid_data = display_pending[[
                     "document_tracking_id", "order_number", "customer_name", "client_received_date", "days_delayed"
@@ -97,6 +97,9 @@ def show_document_accounting_page():
                 )
                 gridOptions = gb.build()
                 
+                # SỬA BUG: Thêm len(display_pending) vào key để buộc làm mới hoàn toàn trạng thái Checkbox khi số lượng dòng thay đổi
+                dynamic_grid_key = f"custom_pending_accounting_grid_len_{len(display_pending)}"
+                
                 grid_response = AgGrid(
                     grid_data,
                     gridOptions=gridOptions,
@@ -106,10 +109,10 @@ def show_document_accounting_page():
                     update_mode=GridUpdateMode.SELECTION_CHANGED,
                     fit_columns_on_grid_load=True,
                     theme="streamlit",
-                    key="custom_pending_accounting_grid"
+                    key=dynamic_grid_key
                 )
                 
-                with st.form("batch_accounting_transfer_form_v6"):
+                with st.form("batch_accounting_transfer_form_v7"):
                     col_f1, col_f2 = st.columns(2)
                     with col_f1:
                         acc_sent_date = st.date_input("Ngày thực tế gửi cho Kế toán", value=pd.Timestamp.today().date())
@@ -139,7 +142,6 @@ def show_document_accounting_page():
     st.divider()
     st.subheader("📜 Lịch Sử Tiến Độ Bàn Giao Kế Toán")
     
-    # Thêm bộ lọc trạng thái/trễ hạn riêng cho bảng Lịch sử theo ý bạn
     overdue_filter_history = st.selectbox(
         "Lọc theo thời gian trễ hạn (Lịch sử):",
         ["Tất cả lịch sử bàn giao", "🚨 Chỉ xem đơn từng bị trễ (Số ngày trễ khi gửi ≥ 3 ngày)", "🟢 Chỉ xem đơn đúng hạn"],
@@ -152,19 +154,16 @@ def show_document_accounting_page():
     else:
         display_history = filtered_history_df.copy()
         
-        # Áp dụng tính toán ngày trễ phục vụ cho bộ lọc lịch sử
         display_history["client_received_date_dt"] = pd.to_datetime(display_history["client_received_date"], errors="coerce")
         display_history["sent_to_accounting_date_dt"] = pd.to_datetime(display_history["sent_to_accounting_date"], errors="coerce")
         display_history["days_delayed_history"] = (display_history["sent_to_accounting_date_dt"] - display_history["client_received_date_dt"]).dt.days
         
-        # Áp dụng bộ lọc từ khóa tổng
         if search_keyword:
             kw = search_keyword.lower()
             display_history = display_history[
                 display_history.astype(str).apply(lambda col: col.str.lower()).apply(lambda col: col.str.contains(kw, na=False)).any(axis=1)
             ]
             
-        # Áp dụng bộ lọc trễ hạn lịch sử vừa thêm
         if overdue_filter_history == "🚨 Chỉ xem đơn từng bị trễ (Số ngày trễ khi gửi ≥ 3 ngày)":
             display_history = display_history[display_history["days_delayed_history"] >= 3]
         elif overdue_filter_history == "🟢 Chỉ xem đơn đúng hạn":
@@ -173,7 +172,6 @@ def show_document_accounting_page():
         if display_history.empty:
             st.info("Không tìm thấy lịch sử nào khớp với điều kiện lọc.")
         else:
-            # Chuẩn bị dữ liệu đưa vào bảng gốc
             history_grid_data = display_history[[
                 "id", "order_number", "customer_name", "client_received_date", 
                 "sent_to_accounting_date", "accounting_received_date", "is_received_by_accounting", "note"
@@ -181,9 +179,33 @@ def show_document_accounting_page():
             
             history_grid_data["is_received_by_accounting"] = history_grid_data["is_received_by_accounting"].map({True: "✅ Đã nhận", False: "⏳ Chờ xác nhận"})
             
-            # ĐÃ XÓA KHỐI LỆNH LỰA CHỌN PHÂN TRANG THỦ CÔNG THỪA Ở ĐÂY
-            # Truyền thẳng dữ liệu vào hàm gốc để AgGrid tự quản lý hiển thị, bộ lọc nội bộ và phân trang đồng bộ
-            render_aggrid(history_grid_data, key="acc_history_master_grid_v6")
+            render_aggrid(history_grid_data, key="acc_history_master_grid_v7")
+
+            # -----------------------------------------------------------------
+            # 🔄 YÊU CẦU 1: KHU VỰC HOÀN TÁC ĐƠN HÀNG (Dành cho Điều phối gửi nhầm)
+            # -----------------------------------------------------------------
+            st.markdown("##### 🔄 Hoàn tác đơn hàng gửi nhầm")
+            # Chỉ cho phép hoàn tác những đơn đang ở trạng thái "Chờ xác nhận"
+            undoable_df = display_history[display_history["is_received_by_accounting"] == False]
+            
+            if not undoable_df.empty:
+                undo_options = {
+                    f"Mã đơn: {row['order_number']} | Khách hàng: {row['customer_name']} (Gửi ngày: {row['sent_to_accounting_date']})": row["id"]
+                    for _, row in undoable_df.iterrows()
+                }
+                col_undo1, col_undo2 = st.columns([7, 3])
+                with col_undo1:
+                    selected_undo_label = st.selectbox("Chọn đơn hàng muốn rút lại / hoàn tác:", list(undo_options.keys()), key="acc_undo_select_box")
+                    target_undo_id = undo_options[selected_undo_label]
+                with col_undo2:
+                    st.write("") # Tạo khoảng trống căn lề
+                    st.write("") 
+                    if st.button("↩️ Xác nhận hoàn tác", use_container_width=True, type="secondary", key="btn_undo_execution"):
+                        DocumentAccountingService.rollback_accounting_transfer(target_undo_id)
+                        st.success("Đã hoàn tác trạng thái thành công! Đơn hàng đã được chuyển lại về danh sách chờ gửi.")
+                        st.rerun()
+            else:
+                st.caption("ℹ️ Không có đơn hàng nào trong danh sách hiện tại thuộc trạng thái 'Chờ xác nhận' để có thể hoàn tác.")
 
     # =========================================================================
     # ⚙️ KHU VỰC XỬ LÝ CỦA KẾ TOÁN (Chỉ ADMIN và ACCOUNTANT nhìn thấy)
@@ -192,26 +214,112 @@ def show_document_accounting_page():
         st.divider()
         st.info("⚙️ KHU VỰC XỬ LÝ CỦA KẾ TOÁN")
         
-        accounting_pending_confirm = all_history_df[all_history_df["is_received_by_accounting"] == False] if not all_history_df.empty else pd.DataFrame()
-        
-        if accounting_pending_confirm.empty or "is_received_by_accounting" not in accounting_pending_confirm.columns:
-            st.info("Hiện không có đơn hàng nào đang ở trạng thái chờ Kế toán duyệt ký nhận.")
+        # Chỉ lấy các đơn đã gửi (sent_to_accounting_date không NULL) nhưng Kế toán chưa nhận
+        if not all_history_df.empty:
+            accounting_pending = all_history_df[
+                (all_history_df["is_received_by_accounting"] == False) & 
+                (all_history_df["sent_to_accounting_date"].notna())
+            ]
         else:
-            st.markdown(f"Có **{len(accounting_pending_confirm)}** đơn hàng đang chờ bạn kiểm tra và ký nhận.")
+            accounting_pending = pd.DataFrame()
+        
+        if accounting_pending.empty:
+            st.info("🎉 Hiện tại không có đơn hàng nào đang ở trạng thái chờ Kế toán duyệt ký nhận.")
+        else:
+            # -----------------------------------------------------------------
+            # YÊU CẦU 2: BỘ LỌC TÌM KIẾM NHANH DÀNH RIÊNG CHO KẾ TOÁN
+            # -----------------------------------------------------------------
+            acc_search_keyword = st.text_input(
+                "🔍 Tìm nhanh đơn chờ duyệt (Gõ tên khách, mã đơn...):", 
+                value="", 
+                key="accounting_panel_search_filter"
+            )
             
-            acc_confirm_options = {
-                f"Đơn: {row['order_number']} | Khách: {row['customer_name']} | Ngày gửi: {row['sent_to_accounting_date']}": (row["id"], row["order_number"])
-                for _, row in accounting_pending_confirm.iterrows()
-            }
+            display_acc_pending = accounting_pending.copy()
+            if acc_search_keyword:
+                kw_acc = acc_search_keyword.lower()
+                display_acc_pending = display_acc_pending[
+                    display_acc_pending.astype(str).apply(lambda col: col.str.lower()).apply(lambda col: col.str.contains(kw_acc, na=False)).any(axis=1)
+                ]
             
-            col_acc1, col_acc2 = st.columns([7, 3])
-            with col_acc1:
-                selected_flow_label = st.selectbox("Chọn đơn hàng bàn giao thực tế:", list(acc_confirm_options.keys()), key="acc_real_select_box_v6")
-                target_flow_id, target_order_num = acc_confirm_options[selected_flow_label]
-            with col_acc2:
-                acc_actual_recv_date = st.date_input("Ngày bạn ký nhận", value=pd.Timestamp.today().date(), key="acc_real_date_input_v6")
+            st.markdown(f"📊 **Bảng Theo Dõi Đơn Hàng Chờ Kế Toán Duyệt ({len(display_acc_pending)} đơn):**")
+            
+            # Chuẩn bị dữ liệu hiển thị bảng gọn gàng cho Kế toán dễ nhìn
+            acc_view_df = display_acc_pending[[
+                "id", "order_number", "customer_name", "sent_to_accounting_date", "note"
+            ]].copy()
+            
+            # Khắc phục lỗi [object Object] bằng cách ép kiểu chuỗi văn bản thuần túy
+            acc_view_df["sent_to_accounting_date"] = acc_view_df["sent_to_accounting_date"].astype(str)
+            acc_view_df.columns = ["ID Luồng", "Mã Đơn Hàng", "Tên Khách Hàng", "Ngày Gửi", "Ghi Chú Đính Kèm"]
+            
+            # Cấu hình AgGrid nâng cao cho Kế toán
+            gb_acc = GridOptionsBuilder.from_dataframe(acc_view_df)
+            gb_acc.configure_pagination(paginationAutoPageSize=False, paginationPageSize=10)
+            
+            # GIẢI ĐÁP: Thêm `filter=True` để kích hoạt ô tìm kiếm riêng ở TỪNG TIÊU ĐỀ CỘT
+            gb_acc.configure_default_column(resizable=True, sortable=True, filter=True)
+            
+            # YÊU CẦU 1: Chuyển cấu hình từ chọn đơn lẻ ('single') sang CHỌN HÀNG LOẠT ('multiple') bằng Checkbox
+            gb_acc.configure_selection(
+                selection_mode="multiple", 
+                use_checkbox=True, 
+                header_checkbox=True,
+                header_checkbox_filtered_only=True
+            )
+            gridOptions_acc = gb_acc.build()
+            
+            # Thêm độ dài danh sách vào key để tự động xóa sạch dấu tích khi số dòng thay đổi (Fix bug dính checkbox)
+            dynamic_acc_grid_key = f"accounting_action_grid_v9_{len(acc_view_df)}"
+            
+            grid_response_acc = AgGrid(
+                acc_view_df,
+                gridOptions=gridOptions_acc,
+                height=300,
+                width='100%',
+                data_return_mode=DataReturnMode.FILTERED_AND_SORTED,
+                update_mode=GridUpdateMode.SELECTION_CHANGED,
+                fit_columns_on_grid_load=True,
+                theme="streamlit",
+                key=dynamic_acc_grid_key
+            )
+            
+            # Lấy toàn bộ danh sách các dòng được tích chọn
+            selected_acc_rows = grid_response_acc.get("selected_rows", [])
+            if isinstance(selected_acc_rows, pd.DataFrame):
+                selected_acc_rows = selected_acc_rows.to_dict(orient="records")
                 
-            if st.button("📥 Xác nhận: ĐÃ nhận đủ hồ sơ giấy tờ", use_container_width=True, type="secondary"):
-                DocumentAccountingService.confirm_receipt_by_accountant(target_flow_id, target_order_num, acc_actual_recv_date)
-                st.success(f"Xác nhận thành công! Đơn {target_order_num} đã được ghi nhận ĐÃ KÝ NHẬN tại phòng Kế toán.")
-                st.rerun()
+            if selected_acc_rows:
+                # Đếm số lượng đơn đang được chọn để xử lý đồng loạt
+                selected_count = len(selected_acc_rows)
+                st.markdown(f"🔥 **Đang chọn xử lý đồng loạt:** `{selected_count}` đơn hàng.")
+                
+                # Bọc khu vực nhập liệu vào Form để tối ưu hóa nút bấm đồng loạt, tránh việc bấm nút này nhảy nút kia
+                with st.form("accounting_batch_action_form_v9"):
+                    col_acc_date, col_acc_reason = st.columns([3, 7])
+                    with col_acc_date:
+                        acc_actual_recv_date = st.date_input("Ngày thực tế ký nhận:", value=pd.Timestamp.today().date(), key="acc_form_date_v9")
+                    with col_acc_reason:
+                        reject_reason = st.text_input("Lý do từ chối (Chỉ điền nếu bấm Từ Chối):", value="", placeholder="Ví dụ: Thiếu hóa đơn đỏ, sai số tiền...", key="acc_form_reason_v9")
+                    
+                    col_btn1, col_btn2 = st.columns(2)
+                    with col_btn1:
+                        submit_approve = st.form_submit_button("📥 Xác nhận: ĐÃ nhận đủ hồ sơ (Các đơn đã chọn)", use_container_width=True, type="primary")
+                        if submit_approve:
+                            for row in selected_acc_rows:
+                                DocumentAccountingService.confirm_receipt_by_accountant(row["ID Luồng"], row["Mã Đơn Hàng"], acc_actual_recv_date)
+                            st.success(f"Đã ký nhận thành công cho toàn bộ {selected_count} đơn hàng được chọn!")
+                            st.rerun()
+                            
+                    with col_btn2:
+                        submit_reject = st.form_submit_button("❌ Từ chối nhận các hồ sơ đang tích chọn", use_container_width=True, type="secondary")
+                        if submit_reject:
+                            if not reject_reason.strip():
+                                st.error("Bạn phải nhập lý do từ chối vào ô trống phía trên trước khi bấm từ chối hàng loạt!")
+                            else:
+                                for row in selected_acc_rows:
+                                    DocumentAccountingService.reject_accounting_transfer(row["ID Luồng"], reject_reason.strip(), order_number=row["Mã Đơn Hàng"])
+                                st.warning(f"Đã từ chối bàn giao {selected_count} đơn hàng và chuyển trả lại danh sách chờ gửi.")
+                                st.rerun()
+            else:
+                st.caption("💡 *Mẹo cho Kế toán: Tích chọn vào ô vuông ở đầu một hoặc nhiều dòng trong bảng để xử lý duyệt/từ chối hàng loạt.*")

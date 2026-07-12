@@ -77,3 +77,27 @@ class DocumentAccountingRepository:
         """
         execute_pg_query(query, (receive_date, flow_id))
         st.cache_data.clear()
+        
+    @staticmethod
+    def rollback_accounting_flow(flow_id):
+        """Hoàn tác luồng: Xóa bản ghi luồng gửi kế toán để đơn quay về hàng đợi Chờ gửi"""
+        query = """
+        DELETE FROM document_accounting_flows
+        WHERE id = %s
+        """
+        execute_pg_query(query, (flow_id,))
+        st.cache_data.clear()
+
+    @staticmethod
+    def reject_accounting_flow(flow_id, reject_reason):
+        """Từ chối nhận hồ sơ: Lưu lý do vào cột note và reset ngày gửi để đơn quay về hàng đợi"""
+        query = """
+        UPDATE document_accounting_flows
+        SET note = CONCAT('❌ Kế toán từ chối: ', %s),
+            sent_to_accounting_date = NULL,
+            is_received_by_accounting = FALSE,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE id = %s
+        """
+        execute_pg_query(query, (reject_reason, flow_id))
+        st.cache_data.clear()

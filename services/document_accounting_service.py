@@ -39,3 +39,31 @@ class DocumentAccountingService:
             str(order_number),
             f"received_date={receive_date} | flow_id={flow_id}"
         )
+        
+    @staticmethod
+    def rollback_accounting_transfer(flow_id, order_number=""):
+        """Xử lý nghiệp vụ Hoàn tác gửi kế toán"""
+        # 1. Gọi Repo để xử lý dưới DB
+        DocumentAccountingRepository.rollback_accounting_flow(flow_id)
+        
+        # 2. Ghi nhận lịch sử vào Log System
+        LogRepository.add_log(
+            "ACCOUNTING_ROLLBACK",
+            "",
+            str(order_number) if order_number else f"Flow_{flow_id}",
+            f"Rolled back accounting flow | flow_id={flow_id}"
+        )
+
+    @staticmethod
+    def reject_accounting_transfer(flow_id, reject_reason, order_number=""):
+        """Xử lý nghiệp vụ Từ chối nhận hồ sơ từ phía Kế toán"""
+        # 1. Gọi Repo để cập nhật lý do từ chối dưới DB
+        DocumentAccountingRepository.reject_accounting_flow(flow_id, reject_reason)
+        
+        # 2. Ghi nhận lịch sử vào Log System
+        LogRepository.add_log(
+            "ACCOUNTING_REJECTED",
+            "",
+            str(order_number) if order_number else f"Flow_{flow_id}",
+            f"Reason: {reject_reason} | flow_id={flow_id}"
+        )    
