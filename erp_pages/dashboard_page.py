@@ -58,18 +58,39 @@ def show_dashboard_page():
             measurement_date = st.date_input(t("measurement_date"), value=measurement_value)
 
             cert_saved = existing_order.get("cert_status")
-            default_no_cert = pd.isna(cert_saved)
+            
+            # Ép kiểu về chữ, viết thường và xóa khoảng trắng hai đầu
+            cert_clean_str = str(cert_saved).strip().lower()
 
-            no_cert = st.checkbox(t("no_cert_yet"), value=default_no_cert)
+            # BẬT BỘ LỌC CHẶN CHỮ 'nan' TỪ DATABASE
+            if (cert_saved is None) or \
+               (pd.isna(cert_saved)) or \
+               (cert_clean_str in ["", "nat", "none", "<nat>", "null", "nan"]): # <-- Thêm "nan" vào đây
+                default_no_cert = True
+            else:
+                default_no_cert = False
+
+            no_cert = st.checkbox(
+                t("no_cert_yet"), 
+                value=default_no_cert, 
+                key=f"no_cert_{order_number.strip()}"
+            )
 
             if no_cert:
                 cert_status = None
                 st.info(t("cert_status_will_be_kept_empty"))
             else:
                 cert_value = pd.Timestamp.today().date()
-                if pd.notna(cert_saved):
-                    cert_value = pd.to_datetime(cert_saved).date()
-                cert_status = st.date_input("Cert Status Date", value=cert_value)
+                if not default_no_cert:
+                    parsed_date = pd.to_datetime(cert_saved, errors='coerce')
+                    if pd.notna(parsed_date):
+                        cert_value = parsed_date.date()
+                
+                cert_status = st.date_input(
+                    "Cert Status Date", 
+                    value=cert_value, 
+                    key=f"cert_date_{order_number.strip()}"
+                )
                 
             disable_calibration_notification = st.checkbox(
                 t("disable_calibration_notificati"),
