@@ -108,24 +108,64 @@ def show_dashboard_page():
             )
 
         # --- VALIDATION FORM NHẬP TAY ---
+        # 1. Kiểm tra các trường bắt buộc phải điền
         is_form_invalid = (not order_number.strip()) or (not customer_name.strip())
         
+        # 2. PHÂN QUYỀN CHẶN CAN THIỆP ĐƠN (Đồng bộ 100% với logic file filter_by_sale_owner)
+        is_not_authorized = False
+        if existing_order:
+            current_role = str(st.session_state.get("role", "")).upper()
+            current_username = st.session_state.get("username")
+            current_sale_owner = st.session_state.get("sale_owner")
+            
+            # Lấy thông tin gốc từ đơn hàng trong database
+            order_creator = existing_order.get("created_by")
+            order_owner = existing_order.get("sale_owner")
+
+            if current_role == "ADMIN":
+                # Admin có toàn quyền, không cần chặn gì cả
+                pass
+                
+            elif current_role == "ASSISTANT":
+                # Trợ lý chỉ được sửa đơn do chính mình TẠO RA (created_by)
+                if order_creator and (order_creator != current_username):
+                    is_not_authorized = True
+                    
+            elif current_role == "SALE":
+                # Quản lý Sale chỉ được sửa đơn thuộc phạm vi quản lý của mình (sale_owner)
+                if order_owner and (order_owner != current_sale_owner):
+                    is_not_authorized = True
+            else:
+                # Nếu role lạ không được định nghĩa, khóa luôn cho an toàn
+                is_not_authorized = True
+
+        # 3. Hiển thị thông báo cảnh báo ra giao diện
         if is_form_invalid:
             st.warning(t("please_fill_in_all_required_fi"))
+        elif is_not_authorized:
+            if current_role == "ASSISTANT":
+                st.error(f"❌ Bạn không có quyền chỉnh sửa đơn hàng này! Đơn hàng này được tạo bởi Assistant: **{existing_order.get('created_by')}**")
+            else:
+                st.error(f"❌ Bạn không có quyền chỉnh sửa đơn hàng này! Đơn hàng này thuộc Sale Owner: **{existing_order.get('sale_owner')}**")
 
-        if st.button(t("sync_order_data"), use_container_width=True, disabled=is_form_invalid):
+        # 4. Kiểm tra điều kiện để mở/khóa nút bấm cập nhật
+        can_submit = (not is_form_invalid) and (not is_not_authorized)
+
+        if st.button(t("sync_order_data"), use_container_width=True, disabled=not can_submit):
+            # Giữ nguyên cấu trúc dữ liệu chủ sở hữu cũ của đơn hàng để không làm hỏng logic
+            final_sale_owner = existing_order.get("sale_owner") if existing_order else st.session_state["sale_owner"]
+
             DashboardService.sync_order(
                 customer_name,
                 order_number,
                 measurement_date,
                 cert_status,
-                st.session_state["sale_owner"],
+                final_sale_owner,  # Giữ đúng sale_owner gốc
                 st.session_state["username"],
                 disable_calibration_notification,
                 disable_document_notification,
                 disable_payment_notification
             )
-            # 2. 🎯 ĐOẠN SỬA CHÍ MẠNG: Ép xóa sạch cache của chính hàm lấy dữ liệu ngay tại UI
             st.cache_data.clear()
             st.success("🎉 Order successfully synced!")
             st.rerun()
