@@ -403,6 +403,12 @@ elif role == "SALE":
         "📝 Notes Management",
         "📝 Logs"
     ]
+    
+elif role == "ACCOUNTANT":
+    # 🎯 KẾ TOÁN: Chỉ cấu hình duy nhất trang Bàn Giao Kế Toán để họ làm việc
+    menu_options = [
+        "📑 Bàn Giao Kế Toán"
+    ]    
 
 try:
     default_index = menu_options.index(st.session_state["current_page"])

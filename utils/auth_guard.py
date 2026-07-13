@@ -53,7 +53,9 @@ def require_editor():
 
         "ADMIN",
 
-        "ASSISTANT"
+        "ASSISTANT",
+        
+        "ACCOUNTANT"
 
     ]:
 

@@ -95,12 +95,14 @@ def show_user_management_page():
     st.divider()
 
     # =========================================================
-    # PHẦN 2: CHỨC NĂNG TẠO USER GỐC (ĐÃ FIX LỖI .LOWER())
+    # PHẦN 2: CHỨC NĂNG TẠO USER GỐC (ĐÃ THÊM ROLE ACCOUNTANT)
     # =========================================================
     st.subheader("Create User")
     username = st.text_input("Username", key="create_uname")
     password = st.text_input("Password", type="password", key="create_pwd")
-    role = st.selectbox("Role", ["ADMIN", "SALE", "ASSISTANT"])
+    
+    # BƯỚC 1: Thêm ACCOUNTANT vào danh sách lựa chọn
+    role = st.selectbox("Role", ["ADMIN", "SALE", "ASSISTANT", "ACCOUNTANT"])
     sale_owner = st.text_input("Sale Owner")
 
     if st.button("Create User"):
@@ -109,14 +111,17 @@ def show_user_management_page():
         elif not password:
             st.error("Password required")
         else:
-            # SỬA BUG: Giữ nguyên chữ Hoa/thường theo đúng ý bạn
             clean_username = username.strip()
             existing = UserRepository.get_user_by_username(clean_username)
             if existing:
                 st.error("User already exists")
             else:
+                # BƯỚC 2: Định nghĩa phân quyền tự động cho từng Role
                 if role == "ADMIN":
                     final_sale_owner = "ALL"
+                elif role == "ACCOUNTANT":
+                    # Kế toán sẽ giữ nhãn riêng biệt, né hoàn toàn luồng xử lý của SALE
+                    final_sale_owner = "ACCOUNTANT"
                 elif role == "SALE":
                     final_sale_owner = (
                         sale_owner.strip()
@@ -127,7 +132,7 @@ def show_user_management_page():
                     final_sale_owner = sale_owner
 
                 UserRepository.create_user(clean_username, hash_password(password), role, final_sale_owner)
-                st.success("User created")
+                st.success(f"User with role {role} created successfully!")
                 st.rerun()
 
     st.divider()
