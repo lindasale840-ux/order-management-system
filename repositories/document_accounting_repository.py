@@ -218,3 +218,36 @@ class DocumentAccountingRepository:
             "Kế toán từ chối/hoàn tác đơn hàng. Yêu cầu sửa đổi và gửi lại từ luồng hồ sơ."
         )
         st.cache_data.clear()
+        
+    @staticmethod
+    def mark_historical_done(records, username):
+        """
+        [THÊM MỚI BỔ TRỢ] Đánh dấu các đơn cũ trong quá khứ đã xử lý xong 
+        để đóng luồng và ẩn khỏi Chỗ 2 mà không ảnh hưởng đơn mới.
+        """
+        import datetime
+        query_insert = """
+        INSERT INTO document_accounting_flows (
+            document_tracking_id, order_number, sent_to_accounting_date, 
+            accounting_received_date, is_received_by_accounting, note, sale_owner, created_by
+        ) VALUES (%s, %s, %s, %s, TRUE, %s, %s, %s)
+        """
+        current_date = datetime.date.today().strftime("%Y-%m-%d")
+        
+        for r in records:
+            # Chèn thẳng trạng thái hoàn thành (is_received_by_accounting = TRUE)
+            params = (
+                r["document_tracking_id"], r["order_number"], 
+                current_date, current_date, 
+                "[LỊCH SỬ] Đơn cũ đã xử lý xong trước khi cập nhật hệ thống.",
+                r["sale_owner"], r["created_by"]
+            )
+            execute_pg_query(query_insert, params)
+            
+            # Ghi log lịch sử hệ thống để lưu vết rõ ràng
+            DocumentAccountingRepository.write_action_log(
+                r["order_number"], "HISTORICAL_DONE", username, 
+                "Đánh dấu hoàn thành đơn cũ từ quá khứ để đóng luồng tracking."
+            )
+            
+        st.cache_data.clear()    

@@ -166,6 +166,25 @@ def show_document_accounting_page():
                                 st.success(f"Đã bàn giao thành công {len(final_selected_data)} hồ sơ từ luồng tự động!")
                                 st.rerun()
 
+                    # --- [MỚI] NÚT DỌN DẸP ĐƠN CŨ ĐÃ XỬ LÝ (ĐẶT NGOÀI FORM ĐỂ TRÁNH LỒNG NHAU) ---
+                    st.write("") # Tạo khoảng cách nhỏ
+                    if st.button("🧹 Dọn đơn cũ (Đã hoàn thành trong quá khứ)", use_container_width=True):
+                        selected_rows = grid_response.get("selected_rows", [])
+                        if isinstance(selected_rows, pd.DataFrame):
+                            selected_rows = selected_rows.to_dict(orient="records")
+                        
+                        if not selected_rows:
+                            st.warning("Vui lòng tích chọn các đơn cũ đã xử lý xong trên bảng AgGrid ở trên!")
+                        else:
+                            selected_ids = [row["ID"] for row in selected_rows]
+                            # Lấy dữ liệu chuẩn dựa trên ID được tích chọn
+                            final_selected_data = pending_df[pending_df["document_tracking_id"].isin(selected_ids)].to_dict(orient="records")
+                            
+                            # Gọi hàm xử lý an toàn chúng ta vừa thêm vào Repository
+                            DocumentAccountingRepository.mark_historical_done(final_selected_data, username)
+                            
+                            st.success(f"Đã dọn dẹp thành công {len(final_selected_data)} đơn cũ! Bảng Chỗ 2 đã được cập nhật sạch sẽ.")
+                            st.rerun()
         # =========================================================================
         # 📜 TOÀN BỘ LỊCH SỬ TIẾN ĐỘ BÀN GIAO KẾ TOÁN (TINH CHỈNH GỌN GÀNG)
         # =========================================================================
