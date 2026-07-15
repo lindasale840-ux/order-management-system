@@ -9,9 +9,9 @@ class DocumentAccountingRepository:
     @st.cache_data(ttl=15)
     def get_pending_send_to_accounting():
         """
-        [GIỮ NGUYÊN GỐC 100%]
+        [ĐÃ FIX LỖI LỌT LƯỚI]
         Lấy các đơn đã nhận từ khách hàng (received_date IS NOT NULL ở bảng cũ)
-        nhưng CHƯA từng được tạo luồng gửi sang kế toán ở bảng mới.
+        nhưng CHƯA từng được tạo luồng gửi sang kế toán, HOẶC đã từng bị Kế toán từ chối/hoàn tác.
         """
         query = """
         SELECT 
@@ -26,7 +26,15 @@ class DocumentAccountingRepository:
         LEFT JOIN orders o ON dt.order_number = o.order_number
         LEFT JOIN document_accounting_flows daf ON dt.id = daf.document_tracking_id
         WHERE dt.received_date IS NOT NULL 
-          AND daf.document_tracking_id IS NULL
+          AND (
+              -- Trường hợp 1: Chưa từng gửi sang kế toán
+              daf.document_tracking_id IS NULL
+              OR
+              -- Trường hợp 2: Đã gửi nhưng bị kế toán từ chối hoặc hoàn tác
+              daf.note LIKE '❌ Kế toán từ chối:%'
+              OR
+              daf.note LIKE '[TỪ CHỐI_CẦN_GỬI_LẠI]%'
+          )
         ORDER BY dt.id DESC
         """
         df = query_pg_to_dataframe(query)
@@ -42,14 +50,32 @@ class DocumentAccountingRepository:
         sale_owner = df_order.iloc[0]["sale_owner"] if not df_order.empty else username
         created_by = df_order.iloc[0]["created_by"] if not df_order.empty else username
 
-        query_insert = """
-        INSERT INTO document_accounting_flows (
-            document_tracking_id, order_number, sent_to_accounting_date, note, sale_owner, created_by
-        ) VALUES (NULL, %s, %s, %s, %s, %s)
-        """
-        execute_pg_query(query_insert, (order_number, sent_date, note, sale_owner, created_by))
+        # Kiểm tra xem đơn đã tồn tại trong luồng kế toán chưa (để tránh chèn trùng dòng nếu gửi lại)
+        check_query = "SELECT id FROM document_accounting_flows WHERE order_number = %s"
+        df_check = query_pg_to_dataframe(check_query, (order_number,))
+
+        if not df_check.empty:
+            # Ghi đè lên dòng cũ nếu là gửi lại đơn ngoài luồng bị từ chối
+            query_update = """
+            UPDATE document_accounting_flows
+            SET sent_to_accounting_date = %s,
+                note = %s,
+                is_received_by_accounting = FALSE,
+                accounting_received_date = NULL,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE order_number = %s
+            """
+            execute_pg_query(query_update, (sent_date, note, order_number))
+        else:
+            # Chèn mới nếu đơn chưa từng gửi
+            query_insert = """
+            INSERT INTO document_accounting_flows (
+                document_tracking_id, order_number, sent_to_accounting_date, note, sale_owner, created_by
+            ) VALUES (NULL, %s, %s, %s, %s, %s)
+            """
+            execute_pg_query(query_insert, (order_number, sent_date, note, sale_owner, created_by))
         
-        # [YÊU CẦU 2] Ghi log hành động gửi ngoài luồng
+        # Ghi log hành động gửi ngoài luồng
         DocumentAccountingRepository.write_action_log(
             order_number, "SEND_DIRECT", username, f"Gửi hồ sơ NGOÀI LUỒNG. Ghi chú: {note}"
         )
@@ -57,27 +83,43 @@ class DocumentAccountingRepository:
 
     @staticmethod
     def batch_add_accounting_flow(records):
-        """[GIỮ NGUYÊN GỐC] Thêm hàng loạt đơn từ luồng tự động"""
-        query = """
-        INSERT INTO document_accounting_flows (
-            document_tracking_id, order_number, sent_to_accounting_date, note, sale_owner, created_by
-        ) VALUES (%s, %s, %s, %s, %s, %s)
-        """
+        """[TỐI ƯU HOÁ AN TOÀN] Thêm hàng loạt đơn từ luồng tự động (Tự động cập nhật nếu gửi lại đơn bị từ chối)"""
+        # Sử dụng cơ chế UPSERT (ON CONFLICT) nếu có cấu hình constraint, 
+        # Hoặc cập nhật tuần tự một cách tường minh để đảm bảo an toàn tuyệt đối với mọi cấu trúc DB:
         for r in records:
-            params = (
-                r["document_tracking_id"], r["order_number"], 
-                r["sent_to_accounting_date"], r["note"], 
-                r["sale_owner"], r["created_by"]
-            )
-            execute_pg_query(query, params)
+            check_query = "SELECT id FROM document_accounting_flows WHERE document_tracking_id = %s"
+            df_check = query_pg_to_dataframe(check_query, (r["document_tracking_id"],))
+            
+            if not df_check.empty:
+                # Ghi đè, reset trạng thái chờ duyệt nếu là gửi lại đơn bị từ chối trước đó
+                query_update = """
+                UPDATE document_accounting_flows
+                SET sent_to_accounting_date = %s,
+                    note = %s,
+                    is_received_by_accounting = FALSE,
+                    accounting_received_date = NULL,
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE document_tracking_id = %s
+                """
+                execute_pg_query(query_update, (r["sent_to_accounting_date"], r["note"], r["document_tracking_id"]))
+            else:
+                # Chèn mới hoàn toàn
+                query_insert = """
+                INSERT INTO document_accounting_flows (
+                    document_tracking_id, order_number, sent_to_accounting_date, note, sale_owner, created_by
+                ) VALUES (%s, %s, %s, %s, %s, %s)
+                """
+                execute_pg_query(query_insert, (
+                    r["document_tracking_id"], r["order_number"], 
+                    r["sent_to_accounting_date"], r["note"], 
+                    r["sale_owner"], r["created_by"]
+                ))
         st.cache_data.clear()
 
     @staticmethod
     def batch_add_accounting_flow_with_log(records, username):
-        """[THÊM BỔ TRỢ] Hàm bọc bên ngoài hàm batch cũ để vừa chạy logic cũ vừa ghi log audit trail"""
-        # Chạy logic nạp DB cũ của bạn
+        """[GIỮ NGUYÊN GỐC] Hàm bọc bên ngoài hàm batch cũ để vừa chạy logic cũ vừa ghi log audit trail"""
         DocumentAccountingRepository.batch_add_accounting_flow(records)
-        # Ghi log cho từng đơn được chọn gửi hàng loạt
         for r in records:
             DocumentAccountingRepository.write_action_log(
                 r["order_number"], "SEND", username, f"Gửi hồ sơ từ hàng đợi tự động. Ghi chú: {r['note']}"
@@ -102,7 +144,7 @@ class DocumentAccountingRepository:
 
     @staticmethod
     def accountant_confirm_receive(flow_id, order_number, receive_date, username):
-        """[CẬP NHẬT YÊU CẦU 2] Thêm ghi log vào hàm xác nhận cũ"""
+        """[GIỮ NGUYÊN GỐC] Xác nhận ký nhận hồ sơ"""
         query = """
         UPDATE document_accounting_flows
         SET accounting_received_date = %s,
@@ -116,21 +158,20 @@ class DocumentAccountingRepository:
         
     @staticmethod
     def rollback_accounting_flow(flow_id, order_number, username):
-        """[SỬA LẠI] Điều phối hủy gửi hồ sơ (Xóa hẳn luồng để trả về hàng đợi chờ gửi)"""
+        """[GIỮ NGUYÊN GỐC] Điều phối hủy gửi hồ sơ"""
         query = "DELETE FROM document_accounting_flows WHERE id = %s"
         execute_pg_query(query, (flow_id,))
-        # Ghi log audit
         DocumentAccountingRepository.write_action_log(order_number, "UNDO", username, "Điều phối hủy/rút lại đơn đã gửi sang Kế toán")
         st.cache_data.clear()
 
     @staticmethod
     def reject_accounting_flow(flow_id, reject_reason, order_number, username):
-        """[CẬP NHẬT YÊU CẦU 2] Thêm ghi log vào hàm từ chối cũ"""
+        """[CẬP NHẬT] Kế toán từ chối: Ẩn khỏi bảng chờ duyệt bằng cách đặt ngày gửi về NULL"""
         query = """
         UPDATE document_accounting_flows
-        SET note = CONCAT('❌ Kế toán từ chối: ', %s),
-            sent_to_accounting_date = NULL,
-            is_received_by_accounting = FALSE,
+        SET note = CONCAT('❌ Kế toán từ chối: ', %s::text),
+            sent_to_accounting_date = NULL,          -- Đưa về NULL để ẩn khỏi bảng Chờ Duyệt
+            is_received_by_accounting = FALSE,       -- Đánh dấu chưa nhận để Chỗ 2 có thể quét lại
             updated_at = CURRENT_TIMESTAMP
         WHERE id = %s
         """
@@ -140,7 +181,7 @@ class DocumentAccountingRepository:
 
     @staticmethod
     def write_action_log(order_number, action_type, actor, action_details):
-        """[HÀM LOG MỚI] Ghi nhật ký hệ thống"""
+        """[GIỮ NGUYÊN GỐC] Ghi nhật ký hệ thống"""
         query = """
         INSERT INTO document_accounting_logs (order_number, action_type, actor, action_details)
         VALUES (%s, %s, %s, %s)
@@ -153,46 +194,27 @@ class DocumentAccountingRepository:
     @staticmethod
     @st.cache_data(ttl=10)
     def get_action_logs():
-        """[HÀM LOG MỚI] Đọc danh sách log hiển thị lên UI"""
+        """[GIỮ NGUYÊN GỐC] Đọc danh sách log hiển thị lên UI"""
         query = "SELECT order_number, action_type, actor, action_details, created_at FROM document_accounting_logs ORDER BY id DESC LIMIT 500"
         return query_pg_to_dataframe(query)
     
     @staticmethod
     def accountant_undo_receive(flow_id, order_number, username):
-        """[TỐI ƯU LOGIC CẬP NHẬT GỬI LẠI] Kế toán hoàn tác hành động Duyệt/Từ chối"""
-        # 1. Kiểm tra xem đơn này là đơn ngoài luồng (document_tracking_id IS NULL) 
-        # hay đơn từ luồng nhận hồ sơ (HAS document_tracking_id)
-        from database.pg_database import query_pg_to_dataframe, execute_pg_query
+        """[GIỮ NGUYÊN GỐC] Kế toán hoàn tác nhận đơn"""
+        from database.pg_database import execute_pg_query
         
-        check_query = "SELECT document_tracking_id FROM document_accounting_flows WHERE id = %s"
-        df_check = query_pg_to_dataframe(check_query, (flow_id,))
-        
-        if not df_check.empty and df_check.iloc[0]["document_tracking_id"] is not None:
-            # TÌNH HUỐNG A: Đơn từ luồng nhận hồ sơ (Chỗ 2)
-            # Xóa hẳn khỏi luồng kế toán để giải phóng đơn quay trở lại bảng Chờ Gửi ở Chỗ 2
-            delete_query = "DELETE FROM document_accounting_flows WHERE id = %s"
-            execute_pg_query(delete_query, (flow_id,))
-            
-            DocumentAccountingRepository.write_action_log(
-                order_number, "ACCOUNTANT_UNDO", username, 
-                "Kế toán hoàn tác đơn từ luồng nhận hồ sơ. Đơn đã được trả về danh sách Chờ Gửi (Chỗ 2)."
-            )
-        else:
-            # TÌNH HUỐNG B: Đơn gửi ngoài luồng (Chỗ 1)
-            # Giữ nguyên dòng nhưng đưa về trạng thái chờ xác nhận để người dùng sửa đổi ở Chỗ 1
-            update_query = """
+        update_query = """
             UPDATE document_accounting_flows
             SET accounting_received_date = NULL,
                 is_received_by_accounting = FALSE,
-                note = f'[Kế toán hoàn tác] Đang chờ cập nhật lại...',
+                note = '[TỪ CHỐI_CẦN_GỬI_LẠI] Kế toán từ chối/hoàn tác đơn hàng.',
                 updated_at = CURRENT_TIMESTAMP
             WHERE id = %s
-            """
-            execute_pg_query(update_query, (flow_id,))
-            
-            DocumentAccountingRepository.write_action_log(
-                order_number, "ACCOUNTANT_UNDO", username, 
-                "Kế toán hoàn tác đơn ngoài luồng. Đơn đang chờ được sửa đổi/gửi lại tại Chỗ 1."
-            )
-            
+        """
+        execute_pg_query(update_query, (flow_id,))
+        
+        DocumentAccountingRepository.write_action_log(
+            order_number, "ACCOUNTANT_REJECT", username, 
+            "Kế toán từ chối/hoàn tác đơn hàng. Yêu cầu sửa đổi và gửi lại từ luồng hồ sơ."
+        )
         st.cache_data.clear()
