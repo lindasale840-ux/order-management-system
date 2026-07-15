@@ -6,23 +6,15 @@ from utils.data_permission import filter_by_sale_owner
 from utils.auth_guard import require_editor
 from components.aggrid_table import render_aggrid
 from io import BytesIO
-# Chỉ cần import đúng 1 dòng này từ file languages
 from languages import t
+from config.app_config import DOCUMENT_WARNING_DAYS # Import để làm giá trị mặc định gợi ý trên UI
 
 def export_excel(df):
     output = BytesIO()
-
-    with pd.ExcelWriter(
-        output,
-        engine="openpyxl"
-    ) as writer:
-        df.to_excel(
-            writer,
-            index=False,
-            sheet_name="Orders"
-        )
-
+    with pd.ExcelWriter(output, engine="openpyxl") as writer:
+        df.to_excel(writer, index=False, sheet_name="Orders")
     return output.getvalue()
+
 def show_dashboard_page():
     require_editor()
 
@@ -45,8 +37,8 @@ def show_dashboard_page():
                 if not existing_df.empty:
                     existing_order = existing_df.iloc[0].to_dict()
 
-            customer_name = st.text_input(t("customer_name")
-                ,
+            customer_name = st.text_input(
+                t("customer_name"),
                 value=str(existing_order.get("customer_name", "") or "")
             )
 
@@ -58,14 +50,11 @@ def show_dashboard_page():
             measurement_date = st.date_input(t("measurement_date"), value=measurement_value)
 
             cert_saved = existing_order.get("cert_status")
-            
-            # Ép kiểu về chữ, viết thường và xóa khoảng trắng hai đầu
             cert_clean_str = str(cert_saved).strip().lower()
 
-            # BẬT BỘ LỌC CHẶN CHỮ 'nan' TỪ DATABASE
             if (cert_saved is None) or \
                (pd.isna(cert_saved)) or \
-               (cert_clean_str in ["", "nat", "none", "<nat>", "null", "nan"]): # <-- Thêm "nan" vào đây
+               (cert_clean_str in ["", "nat", "none", "<nat>", "null", "nan"]):
                 default_no_cert = True
             else:
                 default_no_cert = False
@@ -107,39 +96,60 @@ def show_dashboard_page():
                 value=bool(existing_order.get("disable_payment_notification", 0))
             )
 
+        st.markdown("---")
+        st.subheader("⚙️ Custom Alert Configurations (Để trống/0 để dùng mặc định)")
+        col_cfg1, col_cfg2 = st.columns(2)
+        
+        with col_cfg1:
+            # Lấy giá trị cũ nếu đã cấu hình, mặc định hiển thị gợi ý là trống (0)
+            saved_cert_days = existing_order.get("cert_warning_days")
+            init_cert_days = int(saved_cert_days) if pd.notna(saved_cert_days) and saved_cert_days is not None else 0
+            
+            cert_warning_days = st.number_input(
+                "Cert Warning Days (Mặc định: 5 ngày)",
+                min_value=0,
+                max_value=365,
+                value=init_cert_days,
+                step=1,
+                help="Số ngày trễ hạn từ ngày đo đạc đến lúc có chứng chỉ. Nhập 0 hoặc để trống để sử dụng mặc định hệ thống (5 ngày)."
+            )
+
+        with col_cfg2:
+            saved_doc_days = existing_order.get("doc_warning_days")
+            init_doc_days = int(saved_doc_days) if pd.notna(saved_doc_days) and saved_doc_days is not None else 0
+            
+            doc_warning_days = st.number_input(
+                f"Document Warning Days (Mặc định: {DOCUMENT_WARNING_DAYS} ngày)",
+                min_value=0,
+                max_value=365,
+                value=init_doc_days,
+                step=1,
+                help=f"Số ngày trễ hạn bàn giao tài liệu. Nhập 0 hoặc để trống để sử dụng mặc định hệ thống ({DOCUMENT_WARNING_DAYS} ngày)."
+            )
+
         # --- VALIDATION FORM NHẬP TAY ---
-        # 1. Kiểm tra các trường bắt buộc phải điền
         is_form_invalid = (not order_number.strip()) or (not customer_name.strip())
         
-        # 2. PHÂN QUYỀN CHẶN CAN THIỆP ĐƠN (Đồng bộ 100% với logic file filter_by_sale_owner)
         is_not_authorized = False
         if existing_order:
             current_role = str(st.session_state.get("role", "")).upper()
             current_username = st.session_state.get("username")
             current_sale_owner = st.session_state.get("sale_owner")
             
-            # Lấy thông tin gốc từ đơn hàng trong database
             order_creator = existing_order.get("created_by")
             order_owner = existing_order.get("sale_owner")
 
             if current_role == "ADMIN":
-                # Admin có toàn quyền, không cần chặn gì cả
                 pass
-                
             elif current_role == "ASSISTANT":
-                # Trợ lý chỉ được sửa đơn do chính mình TẠO RA (created_by)
                 if order_creator and (order_creator != current_username):
                     is_not_authorized = True
-                    
             elif current_role == "SALE":
-                # Quản lý Sale chỉ được sửa đơn thuộc phạm vi quản lý của mình (sale_owner)
                 if order_owner and (order_owner != current_sale_owner):
                     is_not_authorized = True
             else:
-                # Nếu role lạ không được định nghĩa, khóa luôn cho an toàn
                 is_not_authorized = True
 
-        # 3. Hiển thị thông báo cảnh báo ra giao diện
         if is_form_invalid:
             st.warning(t("please_fill_in_all_required_fi"))
         elif is_not_authorized:
@@ -148,23 +158,24 @@ def show_dashboard_page():
             else:
                 st.error(f"❌ Bạn không có quyền chỉnh sửa đơn hàng này! Đơn hàng này thuộc Sale Owner: **{existing_order.get('sale_owner')}**")
 
-        # 4. Kiểm tra điều kiện để mở/khóa nút bấm cập nhật
         can_submit = (not is_form_invalid) and (not is_not_authorized)
 
         if st.button(t("sync_order_data"), use_container_width=True, disabled=not can_submit):
-            # Giữ nguyên cấu trúc dữ liệu chủ sở hữu cũ của đơn hàng để không làm hỏng logic
             final_sale_owner = existing_order.get("sale_owner") if existing_order else st.session_state["sale_owner"]
 
+            # Lưu thêm 2 trường cấu hình động cert_warning_days và doc_warning_days xuống DB
             DashboardService.sync_order(
                 customer_name,
                 order_number,
                 measurement_date,
                 cert_status,
-                final_sale_owner,  # Giữ đúng sale_owner gốc
+                final_sale_owner,
                 st.session_state["username"],
                 disable_calibration_notification,
                 disable_document_notification,
-                disable_payment_notification
+                disable_payment_notification,
+                cert_warning_days if cert_warning_days > 0 else None, # Gửi None nếu là 0 để dùng mặc định
+                doc_warning_days if doc_warning_days > 0 else None
             )
             st.cache_data.clear()
             st.success("🎉 Order successfully synced!")
@@ -179,6 +190,10 @@ def show_dashboard_page():
 
             if st.button("🚀 Bulk Sync From Excel", use_container_width=True):
                 for _, row in excel_df.iterrows():
+                    # Đọc động 2 trường từ Excel nếu có, không có thì mặc định là None
+                    excel_cert_days = row.get("cert_warning_days", None)
+                    excel_doc_days = row.get("doc_warning_days", None)
+                    
                     DashboardService.sync_order(
                         row["customer_name"],
                         row["order_number"],
@@ -188,7 +203,9 @@ def show_dashboard_page():
                         st.session_state["username"],
                         row.get("disable_calibration_notification", 0),
                         row.get("disable_document_notification", 0),
-                        row.get("disable_payment_notification", 0)
+                        row.get("disable_payment_notification", 0),
+                        excel_cert_days if pd.notna(excel_cert_days) and excel_cert_days != 0 else None,
+                        excel_doc_days if pd.notna(excel_doc_days) and excel_doc_days != 0 else None
                     )
                 st.success("🎉 Excel dataset processing complete!")
                 st.rerun()
@@ -197,22 +214,11 @@ def show_dashboard_page():
 
     # --- DATA PROCESSING & FILTRATION ---
     all_df = OrderRepository.get_all_orders()
-    #st.write("Số lượng đơn hàng thô từ DB chưa lọc:", len(all_df)) # <--- Chèn dòng này vào để check
-    all_df["measurement_date"] = pd.to_datetime(
-        all_df["measurement_date"],
-        errors="coerce"
-    )
-
-    all_df["next_calibration_date"] = (
-        all_df["measurement_date"]
-        + pd.DateOffset(months=11)
-    )
+    all_df["measurement_date"] = pd.to_datetime(all_df["measurement_date"], errors="coerce")
+    all_df["next_calibration_date"] = (all_df["measurement_date"] + pd.DateOffset(months=11))
 
     all_df = filter_by_sale_owner(all_df)
-
     df = all_df.copy()
-
-    #st.metric("Total Operational Orders", len(df))
 
     # --- SEARCH BAR SECTION ---
     search_text = st.text_input(t("filter_customer_order_invoice"))
@@ -226,10 +232,7 @@ def show_dashboard_page():
     col1, col2, col3 = st.columns([2, 2, 2])
 
     with col1:
-        st.metric(
-            t("total_operational_orders"),
-            len(df)
-        )
+        st.metric(t("total_operational_orders"), len(df))
 
     with col2:
         st.download_button(
@@ -248,22 +251,20 @@ def show_dashboard_page():
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             use_container_width=True
         )
-    # --- ĐÃ SỬA: BỘ ĐIỀU HƯỚNG PHÂN TRANG THUỒN PYTHON CAO CẤP ---
+        
+    # --- DATA VIEWER PAGINATION ---
     st.subheader(t("data_viewer"))
-    
-    # Tạo 2 ô chọn song song: Một ô chọn số dòng/trang, một ô chọn số trang
     col_p1, col_p2, col_p3 = st.columns([2, 2, 6])
     
     with col_p1:
         rows_per_page = st.selectbox(
             "Rows per page",
             options=[5, 10, 20, 50, 100],
-            index=1, # Mặc định hiển thị 10 dòng
+            index=1,
             key="dashboard_pure_rows_per_page"
         )
         
     total_rows = len(df)
-    # Tính toán động tổng số trang dựa trên số dòng được chọn (ví dụ chọn 20 dòng thì tổng số trang tự giảm xuống)
     total_pages = max(1, (total_rows + rows_per_page - 1) // rows_per_page)
     
     with col_p2:
@@ -274,13 +275,10 @@ def show_dashboard_page():
             key="dashboard_pure_click_page_select"
         )
     
-    # Cắt chính xác dữ liệu theo cấu hình đã click chọn
     start_idx = (selected_page - 1) * rows_per_page
     end_idx = start_idx + rows_per_page
     sliced_df = df.iloc[start_idx:end_idx]
     
-    # Hiển thị bảng AgGrid tĩnh cố định dữ liệu đã cắt, đồng thời ẩn thanh phân trang cũ thừa thãi đi
-    # (Nếu hàm render_aggrid của anh có nhận custom_options, anh có thể truyền suppressPaginationPanel=True vào gridOptions bên trong component đó)
     render_aggrid(sliced_df, height=450, page_size=rows_per_page, pagination=False, key="dashboard_grid_pure_sliced")
 
     st.divider()

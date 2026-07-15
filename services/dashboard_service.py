@@ -14,21 +14,27 @@ class DashboardService:
         created_by,
         disable_calibration_notification=0,
         disable_document_notification=0,
-        disable_payment_notification=0  # Tham số mới bổ sung
+        disable_payment_notification=0,  # Tham số mới bổ sung trước đó
+        cert_warning_days=None,          # <-- Bổ sung tham số cấu hình động mới (an toàn 100%)
+        doc_warning_days=None            # <-- Bổ sung tham số cấu hình động mới (an toàn 100%)
     ):
+        # Truyền đầy đủ các tham số cấu hình mới xuống OrderRepository
         OrderRepository.upsert_order(
-            customer_name,
-            order_number,
-            measurement_date,
-            cert_status,
-            sale_owner,
-            created_by,
-            disable_calibration_notification,
-            disable_document_notification,
-            disable_payment_notification
+            customer_name=customer_name,
+            order_number=order_number,
+            measurement_date=measurement_date,
+            cert_status=cert_status,
+            sale_owner=sale_owner,
+            created_by=created_by,
+            disable_calibration_notification=disable_calibration_notification,
+            disable_document_notification=disable_document_notification,
+            disable_payment_notification=disable_payment_notification,
+            cert_warning_days=cert_warning_days,  # Truyền giá trị động xuống DB
+            doc_warning_days=doc_warning_days     # Truyền giá trị động xuống DB
         )
         st.cache_data.clear()
 
+        # Ghi log giữ nguyên cấu trúc cũ của bạn
         LogRepository.add_log(
             "SYNC_ORDER",
             customer_name,

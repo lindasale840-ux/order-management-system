@@ -3,21 +3,18 @@ import streamlit as st
 from repositories.order_repository import OrderRepository
 from repositories.payment_repository import PaymentRepository
 from utils.data_permission import filter_by_sale_owner
+from config.app_config import DOCUMENT_WARNING_DAYS # Đảm bảo import để làm giá trị fallback mặc định
 
 class FinanceService:
 
     @staticmethod
     @st.cache_data(show_spinner="Đang xử lý dữ liệu tài chính...")
     def build_finance_dataframe(role=None, username=None, sale_owner=None):
-        # Hệ thống cache sẽ dựa vào bộ ba tham số này để phân tách dữ liệu giữa các tab người dùng
         print(f"FinanceService.build_finance_dataframe() kích hoạt cho User: {username} | Role: {role}")
 
         # 1. Lấy dữ liệu từ tầng Repository
         orders_df = OrderRepository.get_all_orders()
-        
-        # Đưa tham số phân quyền rõ ràng vào hàm lọc
         orders_df = filter_by_sale_owner(orders_df, role=role, username=username, sale_owner=sale_owner)
-        
         payments_df = PaymentRepository.get_all_payments()
 
         # 2. Gộp dữ liệu
@@ -31,12 +28,18 @@ class FinanceService:
 
         today = pd.Timestamp.today()
         
-        # 3. Chuẩn hóa các cột dữ liệu sang dạng số và ngày tháng để tính toán
+        # 3. Chuẩn hóa các cột dữ liệu sang dạng số và ngày tháng
         df["payment_terms"] = pd.to_numeric(df["payment_terms"], errors="coerce").fillna(0)
         df["measurement_date"] = pd.to_datetime(df["measurement_date"], errors="coerce")
         df["cert_status"] = pd.to_datetime(df["cert_status"], errors="coerce")
         df["invoice_date"] = pd.to_datetime(df["invoice_date"], errors="coerce")
         df["payment_status"] = pd.to_datetime(df["payment_status"], errors="coerce")
+
+        # Ép kiểu dữ liệu cấu hình cảnh báo mới (Tránh lỗi do dữ liệu trống)
+        if "cert_warning_days" in df.columns:
+            df["cert_warning_days"] = pd.to_numeric(df["cert_warning_days"], errors="coerce")
+        if "doc_warning_days" in df.columns:
+            df["doc_warning_days"] = pd.to_numeric(df["doc_warning_days"], errors="coerce")
 
         order_status_list = []
         payment_overdue_list = []
@@ -45,8 +48,12 @@ class FinanceService:
         cert_due_soon_list = []
         cert_workflow_status_list = []
 
-        # 4. Tính toán các cột trạng thái (Logic giữ nguyên 100% của bạn)
+        # 4. Tính toán các cột trạng thái
         for _, row in df.iterrows():
+            # ĐỌC ĐỘNG cảnh báo trễ hạn Cert. Nếu trống thì fallback về 5 ngày.
+            row_cert_days = row.get("cert_warning_days")
+            cert_days_limit = int(row_cert_days) if pd.notna(row_cert_days) and row_cert_days > 0 else 5
+
             if (
                 pd.isna(row["invoice_date"])
                 and pd.notna(row["cert_status"])
@@ -80,8 +87,9 @@ class FinanceService:
                 payment_status_text = "Pending"
             payment_status_text_list.append(payment_status_text)
 
+            # SỬA: Thay thế số 5 cứng bằng biến động cert_days_limit
             if pd.isna(row["cert_status"]):
-                if pd.notna(row["measurement_date"]) and (today - row["measurement_date"]).days > 5:
+                if pd.notna(row["measurement_date"]) and (today - row["measurement_date"]).days > cert_days_limit:
                     cert_workflow_status = "Missing Cert"
                 else:
                     cert_workflow_status = "Processing Cert"

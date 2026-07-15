@@ -7,7 +7,6 @@ from repositories.document_tracking_repository import DocumentTrackingRepository
 from components.aggrid_table import render_aggrid
 from utils.excel_export import dataframe_to_excel
 from config.app_config import DOCUMENT_WARNING_DAYS
-# Chỉ cần import đúng 1 dòng này từ file languages
 from languages import t
 
 def export_button(df, filename):
@@ -21,15 +20,34 @@ def export_button(df, filename):
 
 def get_processed_notification_data(search_keyword):
     """
-    HÀM XỬ LÝ LOGIC DỮ LIỆU TẬP TRUNG (Giữ nguyên vẹn 100% logic gốc của bạn)
+    HÀM XỬ LÝ LOGIC DỮ LIỆU TẬP TRUNG (Đã sửa lỗi so sánh ngày và đồng bộ dữ liệu)
     """
-    # Lấy thông tin phiên làm việc hiện tại của trình duyệt
     current_role = st.session_state.get("role")
     current_user = st.session_state.get("username")
     current_owner = st.session_state.get("sale_owner")
 
-    # BẮT BUỘC: Truyền đầy đủ vào cả 2 nơi gọi hàm bên dưới để phân tách cache
+    # 1. Lấy dữ liệu tài chính
     df = FinanceService.build_finance_dataframe(role=current_role, username=current_user, sale_owner=current_owner)
+    
+    # 2. ĐỒNG BỘ CỘT MỚI TỪ DATABASE:
+    # Vì FinanceService.build_finance_dataframe() có thể chưa SELECT 2 cột mới này, 
+    # chúng ta sẽ map trực tiếp giá trị thực tế từ OrderRepository sang để đảm bảo có dữ liệu thực tế (thay vì gán None).
+    try:
+        all_orders_db = OrderRepository.get_all_orders()
+        if not all_orders_db.empty and "order_number" in df.columns:
+            # Tạo dictionary để map nhanh từ order_number sang số ngày cảnh báo
+            cert_map = all_orders_db.set_index("order_number")["cert_warning_days"].to_dict()
+            doc_map = all_orders_db.set_index("order_number")["doc_warning_days"].to_dict()
+            
+            # Gán giá trị thực tế từ DB vào DataFrame hiện tại
+            df["cert_warning_days"] = df["order_number"].map(cert_map)
+            df["doc_warning_days"] = df["order_number"].map(doc_map)
+    except Exception as e:
+        # Nếu có lỗi gì xảy ra, quay lại phương án phòng thủ an toàn để app không bị sập
+        if "cert_warning_days" not in df.columns:
+            df["cert_warning_days"] = None
+        if "doc_warning_days" not in df.columns:
+            df["doc_warning_days"] = None
 
     # Áp dụng bộ lọc tìm kiếm toàn cầu nếu có
     if search_keyword:
@@ -60,13 +78,16 @@ def get_processed_notification_data(search_keyword):
 
     missing_invoice_df = df[df["order_status"] == "Missing Invoice"]
 
-    today = pd.Timestamp.today()
+    # Chuẩn hóa ngày hôm nay loại bỏ múi giờ để so sánh chính xác
+    today = pd.Timestamp.today().normalize()
 
     # =========================
     # LOGIC KIỂM TRA TÀI LIỆU THIẾU (MISSING DOCUMENT LOGIC)
     # =========================
     tracking_df = DocumentTrackingRepository.get_latest_tracking()
-    df_for_tracking = FinanceService.build_finance_dataframe(role=current_role, username=current_user, sale_owner=current_owner)
+    
+    # Đồng bộ tương tự cho df_for_tracking
+    df_for_tracking = df.copy() 
 
     allowed_orders = set(df_for_tracking["order_number"].astype(str))
     tracking_df = tracking_df[tracking_df["order_number"].astype(str).isin(allowed_orders)]
@@ -79,14 +100,35 @@ def get_processed_notification_data(search_keyword):
     missing_document_df["cert_status"] = pd.to_datetime(
         missing_document_df["cert_status"],
         errors="coerce"
-    )
+    ).dt.tz_localize(None) # Loại bỏ múi giờ để tránh lệch ngày khi so sánh với today
 
-    missing_document_df = missing_document_df[
-        missing_document_df["cert_status"].notna()
-        & (today - missing_document_df["cert_status"]).dt.days.gt(DOCUMENT_WARNING_DAYS)
-        & (~missing_document_df["order_number"].astype(str).isin(sent_orders))
-        & (missing_document_df["disable_document_notification"] != 1)
-    ]
+    # ĐỌC ĐỘNG & TÍNH TOÁN NGÀY CẢNH BÁO TÀI LIỆU
+    def is_document_overdue(row):
+        if pd.isna(row["cert_status"]):
+            return False
+        
+        row_doc_days = row.get("doc_warning_days")
+        
+        # Chuyển đổi an toàn về số nguyên
+        try:
+            limit_days = int(row_doc_days) if pd.notna(row_doc_days) and int(row_doc_days) > 0 else DOCUMENT_WARNING_DAYS
+        except:
+            limit_days = DOCUMENT_WARNING_DAYS
+            
+        # Tính khoảng cách ngày chính xác
+        days_diff = (today - row["cert_status"]).days
+        return days_diff > limit_days
+
+    # Áp dụng bộ lọc động
+    if not missing_document_df.empty:
+        overdue_mask = missing_document_df.apply(is_document_overdue, axis=1)
+        missing_document_df = missing_document_df[
+            overdue_mask
+            & (~missing_document_df["order_number"].astype(str).isin(sent_orders))
+            & (missing_document_df["disable_document_notification"] != 1)
+        ]
+    else:
+        missing_document_df = pd.DataFrame(columns=df_for_tracking.columns)
 
     # Xử lý logic hàng chờ trả về (Pending Return)
     pending_return_df = tracking_df.copy()
@@ -96,25 +138,34 @@ def get_processed_notification_data(search_keyword):
         pending_return_df["sent_date"] = pd.to_datetime(
             pending_return_df["sent_date"],
             errors="coerce"
-        )
+        ).dt.tz_localize(None) # Loại bỏ múi giờ
+        
         pending_return_df["received_date"] = pd.to_datetime(
             pending_return_df["received_date"],
             errors="coerce"
-        )
+        ).dt.tz_localize(None) # Loại bỏ múi giờ
 
-        pending_return_df = pending_return_df[
-            pending_return_df["received_date"].isna()
-            & (today - pending_return_df["sent_date"]).dt.days.gt(DOCUMENT_WARNING_DAYS)
-        ]
+        doc_days_mapping = df_for_tracking.set_index("order_number")["doc_warning_days"].to_dict()
+
+        def is_pending_return_overdue(row):
+            if pd.isna(row["sent_date"]) or pd.notna(row["received_date"]):
+                return False
+            
+            order_num = row["order_number"]
+            row_doc_days = doc_days_mapping.get(order_num)
+            
+            try:
+                limit_days = int(row_doc_days) if pd.notna(row_doc_days) and int(row_doc_days) > 0 else DOCUMENT_WARNING_DAYS
+            except:
+                limit_days = DOCUMENT_WARNING_DAYS
+            
+            days_diff = (today - row["sent_date"]).days
+            return days_diff > limit_days
+
+        overdue_pending_mask = pending_return_df.apply(is_pending_return_overdue, axis=1)
+        pending_return_df = pending_return_df[overdue_pending_mask]
 
         if not pending_return_df.empty:
-            pending_return_df["sent_date"] = pd.to_datetime(
-                pending_return_df["sent_date"],
-                errors="coerce"
-            )
-            pending_return_df = pending_return_df[
-                (today - pending_return_df["sent_date"]).dt.days.gt(DOCUMENT_WARNING_DAYS)
-            ]
             pending_return_df = pending_return_df[
                 ~pending_return_df["order_number"].isin(ignore_orders)
             ]
@@ -137,12 +188,8 @@ def get_processed_notification_data(search_keyword):
 def show_notification_page():
     st.title(t("notification_center"))
 
-    # ========================================================
-    # GLOBAL SEARCH FILTER
-    # ========================================================
     search_keyword = st.text_input(t("fast_query_search_client_accou")).strip()
 
-    # Gọi hàm xử lý logic tách biệt bên trên để lấy sạch dữ liệu cho 7 tabs
     (
         missing_cert_df,
         payment_overdue_df,
@@ -188,7 +235,6 @@ def show_notification_page():
             key="notify_global_rows_per_page"
         )
     
-    # Tìm tập dữ liệu lớn nhất hiện tại trong 7 tabs để tính số trang an toàn nhất
     max_current_rows = max(
         len(missing_cert_df), len(payment_overdue_df), len(due_soon_df),
         len(missing_invoice_df), len(missing_document_df), len(pending_return_df),
@@ -204,7 +250,6 @@ def show_notification_page():
             key="notify_global_page_select"
         )
         
-    # Tính chỉ số Index cắt lát dữ liệu
     start_idx = (selected_page - 1) * rows_per_page
     end_idx = start_idx + rows_per_page
 
