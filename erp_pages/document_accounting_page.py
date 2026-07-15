@@ -128,6 +128,7 @@ def show_document_accounting_page():
                     gb.configure_pagination(paginationAutoPageSize=False, paginationPageSize=20)
                     gb.configure_default_column(resizable=True, filter=True, sortable=True)
                     gb.configure_selection(selection_mode="multiple", use_checkbox=True, header_checkbox=True)
+                    gb.configure_grid_options(enableCellTextSelection=True)
                     gridOptions = gb.build()
                     
                     grid_response = AgGrid(
@@ -279,6 +280,7 @@ def show_document_accounting_page():
         else:
             accounting_pending = pd.DataFrame()
         
+        # --- PHẦN 1: HIỂN THỊ ĐƠN CHỜ DUYỆT (Nếu có) ---
         if accounting_pending.empty:
             st.info("🎉 Hiện tại không có đơn hàng nào đang ở trạng thái chờ Kế toán duyệt ký nhận.")
         else:
@@ -304,15 +306,27 @@ def show_document_accounting_page():
             acc_view_df["sent_to_accounting_date"] = acc_view_df["sent_to_accounting_date"].astype(str)
             acc_view_df.columns = ["ID Luồng", "Mã Đơn Hàng", "Tên Khách Hàng", "Ngày Gửi", "Ghi Chú Đính Kèm"]
             
+            # --- Cấu hình AgGrid cho bảng Chờ Duyệt (Đã sửa để bôi đen copy được chữ) ---
             gb_acc = GridOptionsBuilder.from_dataframe(acc_view_df)
             gb_acc.configure_pagination(paginationAutoPageSize=False, paginationPageSize=10)
             gb_acc.configure_default_column(resizable=True, sortable=True, filter=True)
+            
+            # 1. Bật tính năng chọn bằng checkbox nhưng chặn việc click bừa vào cell cũng ăn chọn dòng
             gb_acc.configure_selection(
                 selection_mode="multiple", 
                 use_checkbox=True, 
                 header_checkbox=True,
                 header_checkbox_filtered_only=True
             )
+            
+            # 2. Ép AgGrid bật tính năng bôi đen text và cấu hình DOM chuẩn để copy không lỗi
+            grid_options_extra = {
+                "enableCellTextSelection": True,
+                "ensureDomOrder": True,
+                "suppressRowClickSelection": True # Giúp click vào ô để bôi đen chữ chứ không bị kích hoạt chọn dòng
+            }
+            gb_acc.configure_grid_options(**grid_options_extra)
+            
             gridOptions_acc = gb_acc.build()
             
             dynamic_acc_grid_key = f"accounting_action_grid_v9_{len(acc_view_df)}"
@@ -349,7 +363,6 @@ def show_document_accounting_page():
                         submit_approve = st.form_submit_button("📥 Xác nhận: ĐÃ nhận đủ hồ sơ (Các đơn đã chọn)", use_container_width=True, type="primary")
                         if submit_approve:
                             for row in selected_acc_rows:
-                                # Truyền thêm tham số order_number và username phục vụ logs
                                 DocumentAccountingRepository.accountant_confirm_receive(row["ID Luồng"], row["Mã Đơn Hàng"], acc_actual_recv_date, username)
                             st.success(f"Đã ký nhận thành công cho toàn bộ {selected_count} đơn hàng được chọn!")
                             st.rerun()
@@ -367,45 +380,51 @@ def show_document_accounting_page():
             else:
                 st.caption("💡 *Mẹo cho Kế toán: Tích chọn vào ô vuông ở đầu một hoặc nhiều dòng trong bảng để xử lý duyệt/từ chối hàng loạt.*")
 
-            # -----------------------------------------------------------------
-            # ↩️ HOÀN TÁC XỬ LÝ NHẦM (DÀNH CHO KẾ TOÁN) - THÊM MỚI
-            # -----------------------------------------------------------------
-            st.markdown("##### ↩️ Hoàn tác xử lý nhầm (Dành cho Kế toán)")
+        # =========================================================================
+        # ↩️ KHU VỰC CỨU HỘ: HOÀN TÁC KHẨN CẤP CHO KẾ TOÁN (LUÔN HIỂN THỊ)
+        # =========================================================================
+        # (Đoạn này đã được đưa ra ngoài dấu thụt lề của nhánh `else` phía trên)
+        st.write("---")
+        with st.expander("↩️ Khu vực Hoàn Tác nhanh (Dành cho đơn lỡ tay bấm Xác Nhận)"):
+            recent_df = DocumentAccountingRepository.get_recently_received_flows(limit=5)
             
-            # Kế toán có thể hoàn tác những đơn ĐÃ ký nhận (True) HOẶC những đơn có chữ 'Từ chối' trong note
-            acc_undoable_df = all_history_df[
-                (all_history_df["is_received_by_accounting"] == True) | 
-                (all_history_df["note"].str.contains("Từ chối", na=False))
-            ]
-            
-            if not acc_undoable_df.empty:
-                acc_undo_options = {
-                    f"Mã đơn: {row['order_number']} | Trạng thái hiện tại: {'Đã nhận' if row['is_received_by_accounting'] else 'Đã từ chối'}": (row["id"], row["order_number"])
-                    for _, row in acc_undoable_df.iterrows()
-                }
-                col_a_undo1, col_a_undo2 = st.columns([7, 3])
-                with col_a_undo1:
-                    selected_acc_undo_label = st.selectbox("Chọn đơn hàng Kế toán muốn HOÀN TÁC lại trạng thái:", list(acc_undo_options.keys()), key="accountant_undo_select_box")
-                    target_acc_flow_id, target_acc_order_num = acc_undo_options[selected_acc_undo_label]
-                with col_a_undo2:
-                    st.write("") 
-                    st.write("") 
-                    if st.button("↩️ Khôi phục về 'Chờ Duyệt'", use_container_width=True, type="secondary", key="btn_accountant_undo_execute"):
-                        DocumentAccountingRepository.accountant_undo_receive(target_acc_flow_id, target_acc_order_num, username)
-                        st.success(f"Đã khôi phục đơn {target_acc_order_num} về trạng thái Chờ xác nhận thành công!")
-                        st.rerun()
+            if recent_df.empty:
+                st.info("Chưa có đơn hàng nào được xác nhận gần đây để hoàn tác.")
             else:
-                st.caption("ℹ️ Hiện tại chưa có đơn hàng nào được Duyệt hoặc Từ chối để có thể hoàn tác.")
-        # -----------------------------------------------------------------
-        # 📜 YÊU CẦU 2: HIỂN THỊ BẢNG NHẬT KÝ HÀNH ĐỘNG CHI TIẾT (AUDIT LOGS)
-        # -----------------------------------------------------------------
+                st.caption("Dưới đây là 5 đơn hàng vừa được ký nhận gần nhất. Bạn có thể bấm hoàn tác để trả lại Chỗ 2:")
+                
+                for idx, row in recent_df.iterrows():
+                    col_info, col_btn = st.columns([4, 1])
+                    with col_info:
+                        st.markdown(
+                            f"📦 **Đơn: {row['order_number']}** | Sale: {row['sale_owner']} | "
+                            f"Ngày nhận: {row['accounting_received_date']} | *Ghi chú cũ: {row['note'] or ''}*"
+                        )
+                    with col_btn:
+                        undo_clicked = st.button(
+                            "↩️ Hoàn tác", 
+                            key=f"quick_undo_{row['id']}", 
+                            type="secondary",
+                            use_container_width=True
+                        )
+                        if undo_clicked:
+                            DocumentAccountingRepository.accountant_undo_receive(
+                                flow_id=row['id'], 
+                                order_number=row['order_number'], 
+                                username=st.session_state["username"]
+                            )
+                            st.success(f"Đã hoàn tác thành công đơn {row['order_number']} về Chỗ 2!")
+                            st.rerun()
+
+        # =========================================================================
+        # 📜 PHẦN 3: HIỂN THỊ BẢNG NHẬT KÝ HÀNH ĐỘNG CHI TIẾT (AUDIT LOGS)
+        # =========================================================================
         st.markdown("### 📋 Nhật Ký Hành Động Kế Toán (Audit Trail)")
         logs_df = DocumentAccountingRepository.get_action_logs()
         if logs_df.empty:
             st.caption("Chưa có bất kỳ hành động thao tác hệ thống nào của kế toán được ghi nhận.")
         else:
             display_logs = logs_df.copy()
-            # Ánh xạ nhãn hành động cho người dùng dễ đọc
             action_map = {
                 "SEND": "📤 Gửi từ Tracking",
                 "SEND_DIRECT": "⚡ Gửi Trực Tiếp",
@@ -417,5 +436,42 @@ def show_document_accounting_page():
             display_logs["action_type"] = display_logs["action_type"].map(action_map).fillna(display_logs["action_type"])
             display_logs.columns = ["Mã Đơn Hàng", "Loại Hành Động", "Người Thực Hiện", "Chi Tiết Nhật Ký", "Thời Gian Hệ Thống"]
             
-            # Sử dụng hàm render_aggrid có sẵn của dự án để chuẩn hóa UI
             render_aggrid(display_logs, key="accounting_audit_trail_logs_grid")
+            
+        st.write("### 📜 Lịch sử thao tác (Logs)")
+
+        if not logs_df.empty:
+            df_excel = logs_df.copy()
+            for col in df_excel.columns:
+                if pd.api.types.is_datetime64_any_dtype(df_excel[col]) or df_excel[col].dtype == 'object':
+                    try:
+                        df_excel[col] = pd.to_datetime(df_excel[col], errors='ignore').dt.strftime('%Y-%m-%d %H:%M:%S')
+                    except Exception:
+                        pass
+
+            import io
+            buffer = io.BytesIO()
+            with pd.ExcelWriter(buffer, engine='xlsxwriter') as writer:
+                df_excel.to_excel(writer, sheet_name='Logs_KeToan', index=False)
+            
+            col_l1, col_l2 = st.columns([1, 1])
+            
+            with col_l1:
+                st.download_button(
+                    label="📥 Xuất Lịch Sử Log (Excel)",
+                    data=buffer.getvalue(),
+                    file_name=f"log_ke_toan_{pd.Timestamp.today().strftime('%Y%m%d_%H%M%S')}.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    use_container_width=True
+                )
+                
+            with col_l2:
+                with st.popover("🚨 Xóa Lịch Sử Log", use_container_width=True):
+                    st.warning("Hành động này sẽ xóa toàn bộ log hiện tại! Bạn đã xuất Excel để lưu trữ chưa?")
+                    confirm_clear = st.button("Tôi chắc chắn, tiến hành xóa sạch log", type="primary", use_container_width=True)
+                    if confirm_clear:
+                        DocumentAccountingRepository.clear_all_action_logs(st.session_state["username"])
+                        st.success("Đã xóa sạch lịch sử log!")
+                        st.rerun()
+        else:
+            st.info("Hiện tại chưa có log lịch sử nào.")

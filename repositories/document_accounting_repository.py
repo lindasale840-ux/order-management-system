@@ -207,7 +207,7 @@ class DocumentAccountingRepository:
             UPDATE document_accounting_flows
             SET accounting_received_date = NULL,
                 is_received_by_accounting = FALSE,
-                note = '[TỪ CHỐI_CẦN_GỬI_LẠI] Kế toán từ chối/hoàn tác đơn hàng.',
+                note = f"Kế toán hoàn tác do nhấn nhầm (Thực hiện bởi: {username})",
                 updated_at = CURRENT_TIMESTAMP
             WHERE id = %s
         """
@@ -250,4 +250,44 @@ class DocumentAccountingRepository:
                 "Đánh dấu hoàn thành đơn cũ từ quá khứ để đóng luồng tracking."
             )
             
-        st.cache_data.clear()    
+        st.cache_data.clear()  
+        
+    @staticmethod
+    def get_recently_received_flows(limit=5):
+        """
+        [THÊM MỚI] Lấy danh sách N đơn hàng vừa được kế toán bấm Xác nhận nhận gần đây nhất
+        để phục vụ tính năng Hoàn tác khẩn cấp khi bảng chờ duyệt trống.
+        """
+        from database.pg_database import execute_pg_query
+        import pandas as pd
+        
+        query = """
+            SELECT id, order_number, document_tracking_id, accounting_received_date, note, sale_owner
+            FROM document_accounting_flows
+            WHERE is_received_by_accounting = TRUE
+            ORDER BY updated_at DESC
+            LIMIT %s
+        """
+        rows = execute_pg_query(query, (limit,))
+        if not rows:
+            return pd.DataFrame()
+        return pd.DataFrame(rows)
+    
+        
+    @staticmethod
+    def clear_all_action_logs(username):
+        """
+        [THÊM MỚI] Xóa toàn bộ log lịch sử thao tác sau khi đã backup.
+        Vẫn lưu lại 1 dòng log đánh dấu hành động xóa này để làm bằng chứng (audit trail).
+        """
+        from database.pg_database import execute_pg_query
+        # 1. Xóa sạch bảng log cũ
+        delete_query = "DELETE FROM document_accounting_action_logs"
+        execute_pg_query(delete_query)
+        
+        # 2. Ghi nhận vết của người đã xóa hệ thống log
+        DocumentAccountingRepository.write_action_log(
+            "SYSTEM_CLEANUP", "CLEAR_LOGS", username, 
+            "Người dùng đã thực hiện dọn dẹp sạch toàn bộ lịch sử log kế toán."
+        )
+        st.cache_data.clear()      
