@@ -30,6 +30,7 @@ from erp_pages.ownership_transfer_page import show_ownership_transfer_page
 from erp_pages.notes_page import show_notes_page
 from database.pg_database import init_pg_db
 from erp_pages.document_accounting_page import show_document_accounting_page
+from erp_pages.document_archive_page import show_document_archive_page
 # =========================
 # INIT DATABASE
 # =========================
@@ -363,6 +364,7 @@ if role == "ADMIN":
         f"🔔 Notification Center ({alert_count})",
         "📨 Document Tracking",
         "📑 Bàn Giao Kế Toán",
+        "📑 Trang Lưu Trữ Hồ Sơ Kế Toán",
         f"📦 Equipment Tracking ({equipment_alert_count})",
         "💵 Revenue Management",
         "📝 Notes Management",
@@ -407,7 +409,8 @@ elif role == "SALE":
 elif role == "ACCOUNTANT":
     # 🎯 KẾ TOÁN: Chỉ cấu hình duy nhất trang Bàn Giao Kế Toán để họ làm việc
     menu_options = [
-        "📑 Bàn Giao Kế Toán"
+        "📑 Bàn Giao Kế Toán",
+        "📑 Trang Lưu Trữ Hồ Sơ Kế Toán"
     ]    
 
 try:
@@ -452,6 +455,8 @@ try:
         show_document_tracking_page()
     elif page == "📑 Bàn Giao Kế Toán": # <--- THÊM KHỐI ĐIỀU HƯỚNG NÀY
         show_document_accounting_page()
+    elif page == "📑 Trang Lưu Trữ Hồ Sơ Kế Toán": # <--- THÊM KHỐI ĐIỀU HƯỚNG NÀY
+        show_document_archive_page()    
     elif page.startswith("📦 Equipment Tracking"):
         show_equipment_tracking_page()   
     elif page == "💵 Revenue Management":

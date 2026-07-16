@@ -13,3 +13,5 @@ database/app.db-shm
 # Streamlit
 .streamlit/
 .streamlit/config.toml
+# Bỏ qua thư mục lưu trữ hồ sơ kế toán thực tế
+KHO_LUU_TRU_KE_TOAN/

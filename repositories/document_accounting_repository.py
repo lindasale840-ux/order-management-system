@@ -2,7 +2,7 @@ import pandas as pd
 import streamlit as st
 from database.pg_database import query_pg_to_dataframe, execute_pg_query
 from utils.datetime_utils import convert_utc_columns
-
+from datetime import datetime
 class DocumentAccountingRepository:
 
     @staticmethod
@@ -144,16 +144,59 @@ class DocumentAccountingRepository:
 
     @staticmethod
     def accountant_confirm_receive(flow_id, order_number, receive_date, username):
-        """[GIỮ NGUYÊN GỐC] Xác nhận ký nhận hồ sơ"""
+        """[ĐÃ FIX AN TOÀN TRUY VẤN] Xác nhận ký nhận hồ sơ và đồng bộ sang kho lưu trữ"""
+        # 1. Cập nhật luồng kế toán
         query = """
         UPDATE document_accounting_flows
         SET accounting_received_date = %s,
             is_received_by_accounting = TRUE,
-            updated_at = CURRENT_TIMESTAMP
+            updated_at = %s
         WHERE id = %s
         """
+        now = datetime.now() # Lấy chính xác ngày giờ hiện tại của máy chủ
         execute_pg_query(query, (receive_date, flow_id))
-        DocumentAccountingRepository.write_action_log(order_number, "APPROVE", username, f"Kế toán ký nhận hồ sơ. Ngày thực tế: {receive_date}")
+        DocumentAccountingRepository.write_action_log(
+            order_number, "APPROVE", username, f"Kế toán ký nhận hồ sơ. Ngày thực tế: {receive_date}"
+        )
+        
+        # 2. Truy vấn thông tin an toàn (Tránh lỗi UndefinedColumn nếu orders không có customer_code)
+        # Đầu tiên lấy thông tin cơ bản trước
+        info_query = """
+            SELECT o.customer_name, daf.note 
+            FROM document_accounting_flows daf
+            LEFT JOIN orders o ON daf.order_number = o.order_number
+            WHERE daf.id = %s
+        """
+        df_info = query_pg_to_dataframe(info_query, (flow_id,))
+        
+        if not df_info.empty:
+            cust_name = df_info.iloc[0]["customer_name"] if pd.notna(df_info.iloc[0]["customer_name"]) else "Khách hàng vãng lai"
+            note = df_info.iloc[0]["note"] or ""
+            
+            # Kiểm tra mã khách hàng (Thử lấy customer_code, nếu lỗi thì dùng mã mặc định 'KH_AUTO')
+            cust_code = "KH_AUTO"
+            try:
+                code_query = "SELECT customer_code FROM orders WHERE order_number = %s LIMIT 1"
+                df_code = query_pg_to_dataframe(code_query, (order_number,))
+                if not df_code.empty and pd.notna(df_code.iloc[0]["customer_code"]):
+                    cust_code = df_code.iloc[0]["customer_code"]
+            except Exception:
+                # Nếu bảng orders không có cột customer_code, giữ nguyên 'KH_AUTO' mà không làm sập luồng code
+                pass
+            
+            # 3. Đồng bộ tự động sang bảng lưu trữ mới (Ghi đè luôn ngày archive_date để tránh bị NULL)
+            from repositories.document_archive_repository import DocumentArchiveRepository
+            DocumentArchiveRepository.add_archive_entry(
+                order_number=order_number,
+                customer_name=cust_name,
+                customer_code=cust_code,
+                document_type="Hồ sơ bàn giao kế toán",
+                file_type="CHỜ FILE",
+                file_path="Chưa tải lên",  
+                note=f"[Đồng bộ tự động từ xác nhận kế toán] {note}",
+                username=username
+            )
+            
         st.cache_data.clear()
         
     @staticmethod
@@ -203,11 +246,12 @@ class DocumentAccountingRepository:
         """[GIỮ NGUYÊN GỐC] Kế toán hoàn tác nhận đơn"""
         from database.pg_database import execute_pg_query
         
-        update_query = """
+        # SỬA: Thêm chữ 'f' trước dấu ba nháy và bọc chuỗi text của note bằng dấu nháy đơn '' trong SQL
+        update_query = f"""
             UPDATE document_accounting_flows
             SET accounting_received_date = NULL,
                 is_received_by_accounting = FALSE,
-                note = f"Kế toán hoàn tác do nhấn nhầm (Thực hiện bởi: {username})",
+                note = 'Kế toán hoàn tác do nhấn nhầm (Thực hiện bởi: {username})',
                 updated_at = CURRENT_TIMESTAMP
             WHERE id = %s
         """
@@ -282,7 +326,7 @@ class DocumentAccountingRepository:
         """
         from database.pg_database import execute_pg_query
         # 1. Xóa sạch bảng log cũ
-        delete_query = "DELETE FROM document_accounting_action_logs"
+        delete_query = "DELETE FROM document_accounting_logs"
         execute_pg_query(delete_query)
         
         # 2. Ghi nhận vết của người đã xóa hệ thống log
