@@ -187,18 +187,18 @@ def show_document_accounting_page():
                             st.success(f"Đã dọn dẹp thành công {len(final_selected_data)} đơn cũ! Bảng Chỗ 2 đã được cập nhật sạch sẽ.")
                             st.rerun()
         # =========================================================================
-        # 📜 TOÀN BỘ LỊCH SỬ TIẾN ĐỘ BÀN GIAO KẾ TOÁN (TINH CHỈNH GỌN GÀNG)
+        # 📜 TOÀN BỘ LỊCH SỬ TIẾN ĐỘ BÀN GIAO KẾ TOÁN (PHẦN TẢI FILE ĐƠN GIẢN - SAFE)
         # =========================================================================
         st.divider()
         st.subheader("📜 Lịch Sử Tiến Độ Bàn Giao Kế Toán")
-        
+
         overdue_filter_history = st.selectbox(
             "Lọc theo thời gian trễ hạn (Lịch sử):",
             ["Tất cả lịch sử bàn giao", "🚨 Chỉ xem đơn từng bị trễ (Số ngày trễ khi gửi ≥ 3 ngày)", "🟢 Chỉ xem đơn đúng hạn"],
             index=0,
             key="history_overdue_filter"
         )
-        
+
         if filtered_history_df.empty:
             st.info("Chưa có dữ liệu lịch sử tiến độ giao nhận kế toán.")
         else:
@@ -222,17 +222,142 @@ def show_document_accounting_page():
             if display_history.empty:
                 st.info("Không tìm thấy lịch sử nào khớp với điều kiện lọc.")
             else:
+                # Chuẩn bị dữ liệu hiển thị gốc
                 history_grid_data = display_history[[
                     "id", "order_number", "customer_name", "client_received_date", 
                     "sent_to_accounting_date", "accounting_received_date", "is_received_by_accounting", "note"
                 ]].copy()
                 
                 history_grid_data["is_received_by_accounting"] = history_grid_data["is_received_by_accounting"].map({True: "✅ Đã nhận", False: "⏳ Chờ xác nhận"})
-                render_aggrid(history_grid_data, key="acc_history_master_grid_v7")
+
+                
+                # -----------------------------------------------------------------
+                # 🎛️ BỘ ĐIỀU KHIỂN PHÂN TRANG VÀ SỐ DÒNG (DO PYTHON QUẢN LÝ 100%)
+                # -----------------------------------------------------------------
+                source_df = history_grid_data.copy()
+                total_records = len(source_df)
+
+                # Thiết lập các cột để dàn hàng ngang bộ điều khiển phân trang
+                col_ps1, col_ps2, col_ps3 = st.columns([4, 3, 3])
+                
+                # 1. Ô chọn số dòng hiển thị trên một trang
+                with col_ps1:
+                    chosen_page_size = st.selectbox(
+                        "Số dòng hiển thị trên bảng:",
+                        [5, 20, 50, 100],
+                        index=0,
+                        key="acc_history_page_size_selector_final"
+                    )
+                
+                # Tính toán tổng số trang dựa trên số dòng đã chọn
+                import math
+                max_pages_calc = math.ceil(total_records / chosen_page_size) if total_records > 0 else 1
+
+                # Khởi tạo giá trị trang hiện tại trong session_state nếu chưa có
+                page_state_key = "acc_history_current_page_state"
+                if page_state_key not in st.session_state:
+                    st.session_state[page_state_key] = 1
+
+                # Phòng ngừa trường hợp đổi số dòng làm tổng số trang giảm xuống thấp hơn trang hiện tại
+                if st.session_state[page_state_key] > max_pages_calc:
+                    st.session_state[page_state_key] = max_pages_calc
+
+                # 2. Ô nhập số trang và hiển thị tổng số trang (Thay thế hoàn toàn phần bị mất)
+                with col_ps2:
+                    current_page = st.number_input(
+                        f"Đến trang (tối đa {max_pages_calc}):",
+                        min_value=1,
+                        max_value=max_pages_calc,
+                        value=st.session_state[page_state_key],
+                        step=1,
+                        key="acc_history_page_number_input"
+                    )
+                    # Cập nhật lại session_state khi người dùng nhập số trang mới
+                    st.session_state[page_state_key] = current_page
+
+                # 3. Hiển thị thông tin tổng số dòng để người dùng dễ theo dõi
+                with col_ps3:
+                    st.markdown("<br>", unsafe_allow_html=True) # Tạo khoảng cách nhỏ để thẳng hàng với ô nhập
+                    st.info(f"Tổng số: {total_records} dòng")
+
+                # 4. Tính toán dải dòng thực tế cần lấy dựa trên trang đang chọn
+                current_page_index = current_page - 1
+                start_row = current_page_index * chosen_page_size
+                end_row = min(start_row + chosen_page_size, total_records)
+
+                # Cắt dữ liệu trực tiếp bằng Python trước khi đưa vào bảng
+                sliced_display_df = source_df.iloc[start_row:end_row].copy()
+
+                # 📊 RENDER BẢNG AGGRID (Hiển thị mượt mà, không giật lag)
+                grid_response = render_aggrid(
+                    sliced_display_df,      # Chỉ truyền dữ liệu của trang hiện tại vào
+                    key="acc_history_master_grid_final", 
+                    pagination=False,       # Tắt phân trang mặc định của AgGrid vì chúng ta đã tự làm ở trên
+                    height=400            # Chiều cao gọn gàng, đẹp mắt
+                )
 
                 # -----------------------------------------------------------------
-                # 🔄 HOÀN TÁC ĐƠN HÀNG GỬI NHẦM (DÀNH CHO ĐIỀU PHỐI) - FIX BUG NaN
+                # 📥 KHU VỰC XUẤT EXCEL TỰ ĐỘNG (ĐỒNG BỘ CHÍNH XÁC THEO TRANG)
                 # -----------------------------------------------------------------
+                import io
+
+                def to_excel(df):
+                    if df is None or df.empty:
+                        return None
+                    output = io.BytesIO()
+                    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+                        df.to_excel(writer, index=False, sheet_name='Lich_Su_Ban_Giao')
+                    processed_data = output.getvalue()
+                    return processed_data
+
+                # 1. Chuẩn bị dữ liệu xuất TOÀN BỘ
+                full_export_df = filtered_history_df.copy()
+                if "is_received_by_accounting" in full_export_df.columns:
+                    full_export_df["is_received_by_accounting"] = full_export_df["is_received_by_accounting"].map({True: "Đã nhận", False: "Chờ xác nhận"})
+                
+                try:
+                    excel_data_all = to_excel(full_export_df)
+                except Exception as e:
+                    excel_data_all = None
+                    st.error(f"Lỗi chuẩn bị dữ liệu xuất toàn bộ: {e}")
+
+                # 2. Trích xuất dữ liệu của trang hiện tại (Trùng khớp 100% với dữ liệu hiển thị trên bảng)
+                try:
+                    current_page_only_df = source_df.iloc[start_row:end_row].copy()
+                    excel_data_filtered = to_excel(current_page_only_df)
+                except Exception as e:
+                    excel_data_filtered = None
+                    st.error(f"Lỗi trích xuất dữ liệu trang: {e}")
+
+                # 3. Đưa 2 nút Export hiển thị song song bên dưới bảng
+                col_btn1, col_btn2 = st.columns(2)
+                
+                with col_btn1:
+                    if excel_data_all:
+                        st.download_button(
+                            label="📥 Xuất Toàn Bộ Lịch Sử (Excel)",
+                            data=excel_data_all,
+                            file_name="Toan_Bo_Lich_Su_Ban_Giao.xlsx",
+                            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                            use_container_width=True,
+                            key="btn_export_all_excel_final"
+                        )
+
+                with col_btn2:
+                    if excel_data_filtered is not None:
+                        st.download_button(
+                            label=f"🔍 Xuất Trang Hiện Tại ({len(current_page_only_df)} dòng - Excel)",
+                            data=excel_data_filtered,
+                            file_name=f"Trang_{current_page}_Hien_Tai_{len(current_page_only_df)}_Dong.xlsx",
+                            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                            use_container_width=True,
+                            key="btn_export_filtered_excel_final"
+                        )
+
+                st.write("") # Tạo khoảng cách nhỏ trước khi đến phần Hoàn tác
+                # -----------------------------------------------------------------
+
+                # 🔄 HOÀN TÁC ĐƠN HÀNG GỬI NHẦM (DÀNH CHO ĐIỀU PHỐI) - FIX BUG NaN
                 st.markdown("##### 🔄 Hoàn tác đơn hàng gửi nhầm (Dành cho Điều phối)")
                 
                 undoable_df = display_history[
@@ -243,7 +368,6 @@ def show_document_accounting_page():
                 if not undoable_df.empty:
                     undo_options = {}
                     for _, row in undoable_df.iterrows():
-                        # Xử lý nếu tên khách hàng bị rỗng hoặc NaN (Đơn ngoài luồng) thì lấy Ghi chú đắp vào
                         cust_name = str(row['customer_name'])
                         if not cust_name or cust_name == "None" or cust_name == "nan":
                             cust_name = f"Gửi ngoài luồng ({str(row['note'])[:20]}...)"
@@ -253,18 +377,17 @@ def show_document_accounting_page():
                         
                     col_undo1, col_undo2 = st.columns([7, 3])
                     with col_undo1:
-                        selected_undo_label = st.selectbox("Chọn đơn hàng muốn rút lại / hoàn tác:", list(undo_options.keys()), key="acc_undo_select_box_v3")
+                        selected_undo_label = st.selectbox("Chọn đơn hàng muốn rút lại / hoàn tác:", list(undo_options.keys()), key="acc_undo_select_box_v10")
                         target_undo_id, target_order_num = undo_options[selected_undo_label]
                     with col_undo2:
                         st.write("") 
                         st.write("") 
-                        if st.button("↩️ Xác nhận hoàn tác gửi", use_container_width=True, type="secondary", key="btn_undo_execution_v3"):
+                        if st.button("↩️ Xác nhận hoàn tác gửi", use_container_width=True, type="secondary", key="btn_undo_execution_v10"):
                             DocumentAccountingRepository.rollback_accounting_flow(target_undo_id, target_order_num, username)
                             st.success(f"Đã rút lại đơn {target_order_num} thành công!")
                             st.rerun()
                 else:
                     st.caption("ℹ️ Không có đơn hàng nào đang ở trạng thái 'Chờ xác nhận' để có thể hoàn tác gửi.")
-
     # =========================================================================
     # ⚙️ KHU VỰC XỬ LÝ CỦA KẾ TOÁN (Chỉ ADMIN và ACCOUNTANT nhìn thấy)
     # =========================================================================

@@ -13,7 +13,9 @@ def render_aggrid(
     pagination=True,
     page_size=5,
     key=None,
-    color_sla=False
+    color_sla=False,
+    page_size_selector=None,  # 🌟 THÊM MỚI: Tham số an toàn, mặc định là None để không ảnh hưởng trang khác
+    update_mode=GridUpdateMode.NO_UPDATE
 ):
     gb = GridOptionsBuilder.from_dataframe(dataframe)
     # === ĐOẠN CHÈN MỚI: CHUẨN HÓA CỘT NGÀY THÁNG THÀNH TEXT ===
@@ -49,7 +51,7 @@ def render_aggrid(
     )
 
     # ========================================================
-    # PAGINATION
+    # PAGINATION (ĐÃ ĐƯỢC CẬP NHẬT AN TOÀN)
     # ========================================================
     if pagination:
         gb.configure_pagination(
@@ -67,6 +69,11 @@ def render_aggrid(
     )
 
     grid_options = gb.build()
+
+    # 🌟 THÊM MỚI: Chỉ áp dụng danh sách chọn dòng tùy biến nếu được truyền vào 
+    # (Đảm bảo không phá vỡ cấu hình mặc định của các trang cũ)
+    if pagination and page_size_selector is not None:
+        grid_options["paginationPageSizeSelector"] = page_size_selector
 
     # ========================================================
     # COLOR SLA STYLE (TỐI ƯU: KHÔNG GHI ĐÈ ĐÈ COLUMN DEFINITIONS)
@@ -150,7 +157,7 @@ def render_aggrid(
         width="100%",
         key=key,
         theme="alpine",
-        update_mode=GridUpdateMode.NO_UPDATE,
+        update_mode=update_mode,  # 🌟 ĐÃ SỬA: Sử dụng biến động thay vì hardcode NO_UPDATE
         fit_columns_on_grid_load=False,
         enable_enterprise_modules=False,
         allow_unsafe_jscode=True
