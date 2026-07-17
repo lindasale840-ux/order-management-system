@@ -2,27 +2,22 @@ import streamlit as st
 import pandas as pd
 import os
 import shutil
+import base64
 from st_aggrid import AgGrid, GridOptionsBuilder, GridUpdateMode, DataReturnMode
 from database.pg_database import query_pg_to_dataframe, execute_pg_query
+from streamlit_pdf_viewer import pdf_viewer
 
 # =========================================================================
 # 📂 CẤU HÌNH THƯ MỤC LƯU TRỮ (SERVER HOẶC MẠNG LAN)
 # =========================================================================
-# - Cách 1: Lưu cục bộ trên máy chủ (máy của bạn đang chạy Streamlit):
 BASE_ARCHIVE_DIR = "KHO_LUU_TRU_KE_TOAN"
 
-# - Cách 2 (Nếu muốn lưu vào ổ cứng chung trong mạng LAN):
-# Hãy uncomment dòng dưới và thay bằng IP/Đường dẫn thư mục chia sẻ của bạn
-# BASE_ARCHIVE_DIR = r"\\192.168.1.100\SharedFolder\KHO_LUU_TRU_KE_TOAN"
-
-# Tạo thư mục gốc nếu chưa tồn tại
 if not os.path.exists(BASE_ARCHIVE_DIR):
     try:
         os.makedirs(BASE_ARCHIVE_DIR, exist_ok=True)
     except Exception as e:
         st.error(f"⚠️ Không thể khởi tạo thư mục lưu trữ: {str(e)}. Vui lòng kiểm tra quyền ghi.")
 
-# Hàm hỗ trợ dọn dẹp thư mục rỗng khi xóa file để tránh rác máy chủ
 def delete_empty_parent_folders(file_path, base_limit_dir):
     parent_dir = os.path.dirname(file_path)
     while parent_dir and os.path.abspath(parent_dir) != os.path.abspath(base_limit_dir):
@@ -34,6 +29,41 @@ def delete_empty_parent_folders(file_path, base_limit_dir):
                 break
         else:
             break
+
+def show_file_preview_secure(file_path):
+    if not os.path.exists(file_path):
+        st.error("❌ Không tìm thấy file vật lý của bản ghi này trên máy chủ.")
+        return
+
+    file_ext = os.path.splitext(file_path)[1].lower()
+    
+    # 1. NẾU LÀ FILE PDF -> Dùng thư viện chuyên dụng, KHÔNG DÙNG IFRAME nữa
+    if file_ext == ".pdf":
+        try:
+            with open(file_path, "rb") as f:
+                pdf_data = f.read()
+            # Hiển thị trình xem PDF nội bộ của Streamlit, cực kỳ an toàn
+            pdf_viewer(input=pdf_data, height=500, width=700)
+        except Exception as e:
+            st.error(f"❌ Không thể hiển thị PDF: {str(e)}")
+            
+    # 2. NẾU LÀ FILE ẢNH -> Dùng thẻ img thông thường (Cốc Cốc không bao giờ chặn)
+    elif file_ext in [".png", ".jpg", ".jpeg"]:
+        try:
+            with open(file_path, "rb") as f:
+                data = f.read()
+            encoded = base64.b64encode(data).decode("utf-8")
+            # Render trực tiếp bằng markdown html
+            st.markdown(
+                f'<img src="data:image/{file_ext[1:]};base64,{encoded}" style="max-width:100%; max-height:500px; display:block; margin:auto;"/>',
+                unsafe_allow_html=True
+            )
+        except Exception as e:
+            st.error(f"❌ Không thể hiển thị ảnh: {str(e)}")
+            
+    # 3. CÁC ĐỊNH DẠNG KHÁC (Excel, Word...) -> Chỉ hiện thông báo gợi ý tải về
+    else:
+        st.info(f"📂 Định dạng `{file_ext.upper()}` không hỗ trợ xem trực tiếp. Bạn hãy nhấn nút 'Tải File' ở bên dưới để xem nội dung nhé!")
 
 def show_document_archive_page():
     # =========================================================================
@@ -49,10 +79,7 @@ def show_document_archive_page():
     st.title("🗄️ Kho Lưu Trữ & Tra Cứu Hồ Sơ Kế Toán")
     st.markdown("---")
 
-    # =========================================================================
-    # 📊 TẢI DỮ LIỆU TỪ DATABASE (Đã fix lỗi hiển thị ngày tháng [object Object])
-    # =========================================================================
-    # Lấy danh sách chờ file (từ trang kế toán xác nhận sang)
+    # Tải dữ liệu từ Database
     waiting_query = """
         SELECT id, order_number, customer_name, customer_code, 
                document_type, file_type, file_path, archive_date, created_by, note
@@ -61,12 +88,9 @@ def show_document_archive_page():
         ORDER BY created_at DESC
     """
     df_waiting = query_pg_to_dataframe(waiting_query)
-    
-    # Ép kiểu ngày tháng thành chuỗi text đẹp đẽ để tránh lỗi [object Object] của AgGrid
     if not df_waiting.empty and "archive_date" in df_waiting.columns:
         df_waiting["archive_date"] = pd.to_datetime(df_waiting["archive_date"]).dt.strftime('%Y-%m-%d %H:%M:%S')
 
-    # Lấy danh sách hồ sơ chính thức (đã có file thực tế)
     archived_query = """
         SELECT id, order_number, customer_name, customer_code, 
                document_type, file_type, file_path, archive_date, created_by, note
@@ -75,13 +99,11 @@ def show_document_archive_page():
         ORDER BY created_at DESC
     """
     df_archived = query_pg_to_dataframe(archived_query)
-    
-    # Ép kiểu ngày tháng danh sách chính thức thành chuỗi text
     if not df_archived.empty and "archive_date" in df_archived.columns:
         df_archived["archive_date"] = pd.to_datetime(df_archived["archive_date"]).dt.strftime('%Y-%m-%d %H:%M:%S')
 
     # =========================================================================
-    # 🏗️ PHẦN 1: GIAO DIỆN NHẬP & HOÀN THIỆN HỒ SƠ (CHIA THÀNH 2 TAB RIÊNG BIỆT)
+    # 🏗️ PHẦN 1: GIAO DIỆN NHẬP & HOÀN THIỆN HỒ SƠ
     # =========================================================================
     st.markdown("## 📥 Tiếp Nhận & Lưu Trữ Hồ Sơ")
     tab_auto, tab_manual = st.tabs([
@@ -89,18 +111,14 @@ def show_document_archive_page():
         "✍️ Khởi Tạo Lưu Trữ Thủ Công"
     ])
 
-    # -------------------------------------------------------------------------
-    # TAB A: XỬ LÝ ĐỒNG BỘ TỪ KẾ TOÁN (Tự động điền dữ liệu khi click dòng)
-    # -------------------------------------------------------------------------
+    # --- TAB A: XỬ LÝ ĐỒNG BỘ TỪ KẾ TOÁN ---
     with tab_auto:
         st.markdown("### 1. Danh sách hồ sơ kế toán đã ký nhận (Chờ File thực tế)")
-        
         selected_waiting_row = None
         
         if df_waiting.empty:
             st.info("🎉 Hiện tại không có hồ sơ nào đang chờ bổ sung file thực tế!")
         else:
-            # Chuẩn bị dữ liệu hiển thị AgGrid Chờ File
             waiting_grid_data = df_waiting.copy()
             waiting_grid_data.columns = [
                 "ID", "Mã Đơn", "Tên Khách Hàng", "Mã Khách Hàng", 
@@ -124,7 +142,6 @@ def show_document_archive_page():
                 key="waiting_archive_grid"
             )
             
-            # Xử lý lấy dòng được chọn từ bảng Chờ File
             sel_rows_w = grid_waiting_resp.get("selected_rows", [])
             if sel_rows_w is not None and len(sel_rows_w) > 0:
                 if isinstance(sel_rows_w, pd.DataFrame):
@@ -136,7 +153,6 @@ def show_document_archive_page():
         st.markdown("---")
         st.markdown("### 2. Form Hoàn Thiện & Cất Kho")
         
-        # Nếu người dùng chọn 1 dòng trên bảng chờ file, tự động trích xuất thông tin đổ vào Form
         if selected_waiting_row:
             wait_id = int(selected_waiting_row["ID"])
             wait_order = str(selected_waiting_row["Mã Đơn"])
@@ -180,11 +196,9 @@ def show_document_archive_page():
                         final_path = os.path.join(dest_dir, auto_uploaded_file.name)
                         
                         try:
-                            # Ghi file vật lý lên Server
                             with open(final_path, "wb") as f:
                                 f.write(auto_uploaded_file.getbuffer())
                             
-                            # Cập nhật thông tin vào DB, xóa bỏ trạng thái CHỜ FILE
                             update_query = """
                                 UPDATE document_archives
                                 SET document_type = %s,
@@ -211,12 +225,9 @@ def show_document_archive_page():
         else:
             st.info("💡 Vui lòng tích chọn một hồ sơ chờ trên bảng danh sách ở trên để hệ thống tự động điền thông tin vào form!")
 
-    # -------------------------------------------------------------------------
-    # TAB B: KHỞI TẠO LƯU TRỮ THỦ CÔNG (Tự nhập hoàn toàn)
-    # -------------------------------------------------------------------------
+    # --- TAB B: KHỞI TẠO LƯU TRỮ THỦ CÔNG ---
     with tab_manual:
         st.markdown("### ✍️ Nhập Mới Hồ Sơ Ngoài Luồng Hệ Thống")
-        
         with st.form("manual_archive_form"):
             col_m1, col_m2 = st.columns(2)
             with col_m1:
@@ -243,16 +254,8 @@ def show_document_archive_page():
                 man_code_clean = manual_cust_code.strip() if manual_cust_code else ""
                 man_type_clean = manual_doc_type.strip() if manual_doc_type else ""
                 
-                if not man_order_clean:
-                    st.error("❌ Bạn chưa điền Mã Đơn Hàng!")
-                elif not man_name_clean:
-                    st.error("❌ Bạn chưa điền Tên Khách Hàng!")
-                elif not man_code_clean:
-                    st.error("❌ Bạn chưa điền Mã Khách Hàng!")
-                elif not man_type_clean or man_type_clean == "Khác...":
-                    st.error("❌ Bạn chưa chọn hoặc nhập Loại Hồ Sơ!")
-                elif not manual_file:
-                    st.error("❌ Bạn chưa đính kèm File hồ sơ thực tế!")
+                if not man_order_clean or not man_name_clean or not man_code_clean or not man_type_clean or not manual_file:
+                    st.error("❌ Vui lòng điền đầy đủ các trường thông tin có dấu (*)")
                 else:
                     file_ext = os.path.splitext(manual_file.name)[1].lower().replace(".", "")
                     folder_name = f"{man_name_clean}_{man_order_clean}".replace(" ", "_").replace("/", "-")
@@ -262,25 +265,17 @@ def show_document_archive_page():
                     final_path = os.path.join(dest_dir, manual_file.name)
                     
                     try:
-                        # Ghi file vật lý lên Server
                         with open(final_path, "wb") as f:
                             f.write(manual_file.getbuffer())
                         
-                        # Ghi nhận bản ghi chính thức vào DB (Đã lưu đầy đủ tệp đính kèm)
                         insert_query = """
                             INSERT INTO document_archives 
                             (order_number, customer_name, customer_code, document_type, file_type, file_path, note, created_by, archive_date)
                             VALUES (%s, %s, %s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP)
                         """
                         execute_pg_query(insert_query, (
-                            man_order_clean,
-                            man_name_clean,
-                            man_code_clean,
-                            man_type_clean,
-                            file_ext.upper(),
-                            final_path,
-                            manual_note,
-                            username
+                            man_order_clean, man_name_clean, man_code_clean,
+                            man_type_clean, file_ext.upper(), final_path, manual_note, username
                         ))
                         st.success(f"🎉 Đã thêm mới và lưu trữ thành công hồ sơ vào kho: `{final_path}`")
                         st.rerun()
@@ -288,17 +283,16 @@ def show_document_archive_page():
                         st.error(f"❌ Đã xảy ra lỗi khi ghi nhận file: {str(e)}")
 
     # =========================================================================
-    # 📊 PHẦN 2: DANH SÁCH TOÀN BỘ HỒ SƠ ĐÃ LƯU TRONG KHO CHÍNH THỨC
+    # 📜 PHẦN 2: DANH SÁCH TOÀN BỘ HỒ SƠ & BỘ KHUNG TƯƠNG TÁC XEM TRƯỚC (PREVIEW)
     # =========================================================================
     st.markdown("---")
-    st.markdown("## 📜 Danh Sách Hồ Sơ Đã Lưu Trữ")
+    st.markdown("## 📜 Tra Cứu & Xem Trực Tiếp Hồ Sơ")
     
     search_keyword = st.text_input("🔍 Tìm kiếm nhanh hồ sơ trong kho:", value="", key="archive_filter_quick")
     
     if df_archived.empty:
         st.info("Hiện tại chưa có hồ sơ lưu chính thức nào trong kho.")
     else:
-        # Áp dụng bộ lọc tìm kiếm
         if search_keyword:
             kw = search_keyword.lower()
             df_archived = df_archived[
@@ -311,43 +305,39 @@ def show_document_archive_page():
             "Loại Hồ Sơ", "Định Dạng", "Đường Dẫn Vật Lý", "Ngày Lưu Kho", "Người Lưu", "Ghi Chú"
         ]
 
-        # Cấu hình hiển thị AgGrid danh sách lưu trữ
         gb = GridOptionsBuilder.from_dataframe(grid_data)
         gb.configure_pagination(paginationAutoPageSize=False, paginationPageSize=10)
         gb.configure_default_column(resizable=True, sortable=True, filter=True)
-        gb.configure_selection(selection_mode="single", use_checkbox=True) # Chỉ cho chọn 1 dòng tại một thời điểm
+        gb.configure_selection(selection_mode="single", use_checkbox=True)
         
-        grid_options_extra = {
-            "enableCellTextSelection": True,
-            "ensureDomOrder": True,
-        }
+        grid_options_extra = {"enableCellTextSelection": True, "ensureDomOrder": True}
         gb.configure_grid_options(**grid_options_extra)
         gridOptions = gb.build()
 
-        grid_response = AgGrid(
-            grid_data,
-            gridOptions=gridOptions,
-            height=350,
-            width='100%',
-            data_return_mode=DataReturnMode.FILTERED_AND_SORTED,
-            update_mode=GridUpdateMode.SELECTION_CHANGED,
-            theme="streamlit",
-            key="archive_grid_viewer"
-        )
+        # 🌟 SỬ DỤNG CHIA CỘT ĐỂ HIỂN THỊ PREVIEW CHUYÊN NGHIỆP
+        col_table, col_preview = st.columns([1.1, 0.9]) # Chia màn hình: Trái là Bảng, Phải là Preview
+
+        with col_table:
+            st.markdown("##### Danh sách hồ sơ:")
+            grid_response = AgGrid(
+                grid_data,
+                gridOptions=gridOptions,
+                height=350,
+                width='100%',
+                data_return_mode=DataReturnMode.FILTERED_AND_SORTED,
+                update_mode=GridUpdateMode.SELECTION_CHANGED,
+                theme="streamlit",
+                key="archive_grid_viewer"
+            )
 
         selected_rows = grid_response.get("selected_rows", [])
-        
-        # Xử lý làm sạch dòng được chọn
         row_to_process = None
         if selected_rows is not None:
             if isinstance(selected_rows, pd.DataFrame) and not selected_rows.empty:
                 row_raw = selected_rows.iloc[0].to_dict()
             elif isinstance(selected_rows, list) and len(selected_rows) > 0:
                 first_item = selected_rows[0]
-                if isinstance(first_item, dict):
-                    row_raw = first_item.get("data", first_item)
-                else:
-                    row_raw = getattr(first_item, "data", first_item)
+                row_raw = first_item.get("data", first_item) if isinstance(first_item, dict) else getattr(first_item, "data", first_item)
             else:
                 row_raw = None
 
@@ -355,64 +345,54 @@ def show_document_archive_page():
                 row_to_process = {}
                 for k, v in row_raw.items():
                     if not str(k).startswith('_'):
-                        if isinstance(v, dict):
-                            row_to_process[k] = v.get("value", str(v))
-                        else:
-                            row_to_process[k] = v
+                        row_to_process[k] = v.get("value", str(v)) if isinstance(v, dict) else v
 
-        # =========================================================================
-        # 🎮 PHẦN 3: KHU VỰC THAO TÁC FILE (CHỈ XUẤT HIỆN KHI CÓ DÒNG ĐƯỢC CHỌN)
-        # =========================================================================
-        if row_to_process is not None:
-            selected_id = int(row_to_process["ID"])
-            selected_file_path = str(row_to_process["Đường Dẫn Vật Lý"])
-            selected_order_num = str(row_to_process["Mã Đơn"])
-            
-            st.markdown("---")
-            st.warning(f"🎯 Đang chọn hồ sơ ID: **{selected_id}** (Mã Đơn: **{selected_order_num}**). Vui lòng chọn hành động bên dưới:")
-            
-            col_action1, col_action2 = st.columns(2)
-            
-            # --- HÀNH ĐỘNG 1: DOWNLOAD FILE VỀ MÁY KHÁCH ---
-            with col_action1:
-                if selected_file_path and selected_file_path not in ["Chưa tải lên", "CHỜ FILE"] and os.path.exists(selected_file_path):
-                    try:
-                        file_name_only = os.path.basename(selected_file_path)
-                        
-                        # Sử dụng nút thường, IDM sẽ không thể tự bắt link khi click dòng nữa!
-                        if st.button(f"📥 Chuẩn Bị Tải File ({file_name_only})", use_container_width=True, key=f"prepare_dl_{selected_id}"):
+        # 🌟 KHU VỰC XỬ LÝ PREVIEW & THAO TÁC FILE
+        with col_preview:
+            st.markdown("##### 👁️ Xem trước tài liệu:")
+            if row_to_process is not None:
+                selected_id = int(row_to_process["ID"])
+                selected_file_path = str(row_to_process["Đường Dẫn Vật Lý"])
+                selected_order_num = str(row_to_process["Mã Đơn"])
+                
+                # Hiển thị Preview trực tiếp nếu là PDF/Ảnh
+                # Gọi trực tiếp hàm hiển thị an toàn mới
+                show_file_preview_secure(selected_file_path)
+
+                # Thanh công cụ tải / xóa nhỏ gọn phía dưới khung Preview
+                st.markdown("---")
+                col_btn1, col_btn2 = st.columns(2)
+                
+                with col_btn1:
+                    if selected_file_path and os.path.exists(selected_file_path):
+                        try:
+                            file_name_only = os.path.basename(selected_file_path)
                             with open(selected_file_path, "rb") as file_bytes:
                                 btn_data = file_bytes.read()
-                            
-                            # Nút download thực sự chỉ xuất hiện SAU KHI người dùng chủ động click nút chuẩn bị
                             st.download_button(
-                                label="➔ BẤM VÀO ĐÂY ĐỂ LƯU FILE VỀ MÁY",
+                                label=f"📥 Tải File ({file_name_only})",
                                 data=btn_data,
                                 file_name=file_name_only,
                                 mime="application/octet-stream",
                                 use_container_width=True,
-                                key=f"real_download_btn_{selected_id}"
+                                key=f"dl_btn_{selected_id}"
                             )
-                    except Exception as ex_load:
-                        st.error(f"Không thể tải file: {str(ex_load)}")
-                else:
-                    st.info("ℹ️ Không tìm thấy file vật lý của bản ghi này trên máy chủ.")
-            # --- HÀNH ĐỘNG 2: XÓA HỒ SƠ KHỎI KHO (Cần phân quyền Admin) ---
-            with col_action2:
-                confirm_delete = st.button("🗑️ Xác Nhận Xóa Bản Ghi & File", type="primary", use_container_width=True, key=f"del_btn_{selected_id}")
-                
-                if confirm_delete:
-                    # 1. Thực hiện xóa file vật lý trên máy chủ
-                    if selected_file_path and selected_file_path not in ["Chưa tải lên", "CHỜ FILE"] and os.path.exists(selected_file_path):
-                        try:
-                            os.remove(selected_file_path)
-                            delete_empty_parent_folders(selected_file_path, BASE_ARCHIVE_DIR)
-                        except Exception as ex_file:
-                            st.warning(f"Lưu ý: Không thể xóa file vật lý (có thể do lỗi phân quyền ổ đĩa) nhưng sẽ tiếp tục xóa bản ghi trong DB. Chi tiết: {str(ex_file)}")
-
-                    # 2. Xóa bản ghi trong PostgreSQL
-                    delete_query = "DELETE FROM document_archives WHERE id = %s"
-                    execute_pg_query(delete_query, (selected_id,))
-                    
-                    st.success("🎉 Đã dọn dẹp file vật lý và xóa bỏ hồ sơ khỏi kho dữ liệu thành công!")
-                    st.rerun()
+                        except Exception as ex_load:
+                            st.error(f"Lỗi chuẩn bị tải: {str(ex_load)}")
+                            
+                with col_btn2:
+                    confirm_delete = st.button("🗑️ Xóa Hồ Sơ", type="primary", use_container_width=True, key=f"del_btn_{selected_id}")
+                    if confirm_delete:
+                        if selected_file_path and os.path.exists(selected_file_path):
+                            try:
+                                os.remove(selected_file_path)
+                                delete_empty_parent_folders(selected_file_path, BASE_ARCHIVE_DIR)
+                            except Exception as ex_file:
+                                st.warning(f"Lỗi xóa file vật lý: {str(ex_file)}")
+                        
+                        delete_query = "DELETE FROM document_archives WHERE id = %s"
+                        execute_pg_query(delete_query, (selected_id,))
+                        st.success("🎉 Đã xóa hồ sơ thành công!")
+                        st.rerun()
+            else:
+                st.info("👈 Hãy chọn một dòng trên bảng để xem trước tài liệu và thao tác.")

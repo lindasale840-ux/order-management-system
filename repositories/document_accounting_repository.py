@@ -154,7 +154,10 @@ class DocumentAccountingRepository:
         WHERE id = %s
         """
         now = datetime.now() # Lấy chính xác ngày giờ hiện tại của máy chủ
-        execute_pg_query(query, (receive_date, flow_id))
+        
+        # FIX TẠI ĐÂY: Truyền đủ 3 tham số (receive_date ứng với %s số 1, now ứng với %s số 2, flow_id ứng với %s số 3)
+        execute_pg_query(query, (receive_date, now, flow_id))
+        
         DocumentAccountingRepository.write_action_log(
             order_number, "APPROVE", username, f"Kế toán ký nhận hồ sơ. Ngày thực tế: {receive_date}"
         )
