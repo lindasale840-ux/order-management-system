@@ -410,7 +410,8 @@ elif role == "ACCOUNTANT":
     # 🎯 KẾ TOÁN: Chỉ cấu hình duy nhất trang Bàn Giao Kế Toán để họ làm việc
     menu_options = [
         "📑 Bàn Giao Kế Toán",
-        "📑 Trang Lưu Trữ Hồ Sơ Kế Toán"
+        "📑 Trang Lưu Trữ Hồ Sơ Kế Toán",
+        "📝 Notes Management"
     ]    
 
 try:
