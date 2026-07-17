@@ -3,6 +3,7 @@ import streamlit as st
 from database.pg_database import query_pg_to_dataframe, execute_pg_query
 from utils.datetime_utils import convert_utc_columns
 from datetime import datetime
+
 class DocumentAccountingRepository:
 
     @staticmethod
@@ -338,3 +339,37 @@ class DocumentAccountingRepository:
             "Người dùng đã thực hiện dọn dẹp sạch toàn bộ lịch sử log kế toán."
         )
         st.cache_data.clear()      
+
+    @staticmethod
+    @st.cache_data(ttl=15)
+    def get_overdue_documents(days_limit=1, start_date="2026-05-05"):
+        """
+        [BẢN KHỬ LỖI NaN DỮ LIỆU] Lấy danh sách đơn hàng quá hạn bàn giao chứng từ.
+        - Sử dụng Regex để chỉ lọc các dòng có định dạng ngày hợp lệ (dạng YYYY-MM-DD), bỏ qua sạch NaN/null.
+        """
+        query = """
+        SELECT 
+            dt.order_number AS "Mã Đơn Hàng",
+            orders.customer_name AS "Khách Hàng",
+            dt.received_date AS "Ngày Nhận Từ Khách",
+            COALESCE(orders.created_by, orders.sale_owner, 'Chưa xác định') AS "Trợ Lý Phụ Trách",
+            CURRENT_DATE - TO_DATE(dt.received_date, 'YYYY-MM-DD') AS "Số Ngày Trễ"
+        FROM document_tracking dt
+        INNER JOIN orders ON orders.order_number = dt.order_number
+        LEFT JOIN document_accounting_flows daf ON daf.order_number = dt.order_number
+        WHERE 
+          -- BẢO VỆ CHỐNG LỖI NaN: Chỉ lấy các dòng có định dạng đúng kiểu 4 số-2 số-2 số (VD: 2026-07-02)
+          dt.received_date ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'
+          
+          -- Chưa gửi sang kế toán (Hoặc đã gửi nhưng bị từ chối trả về Chờ gửi)
+          AND (daf.id IS NULL OR daf.sent_to_accounting_date IS NULL)
+          
+          -- Tính số ngày ngâm hồ sơ vượt quá giới hạn chọn trên giao diện
+          AND (CURRENT_DATE - TO_DATE(dt.received_date, 'YYYY-MM-DD')) >= %s
+          
+          -- Bộ lọc chặn đơn cũ lịch sử lỗi
+          AND TO_DATE(dt.received_date, 'YYYY-MM-DD') >= TO_DATE(%s, 'YYYY-MM-DD')
+        ORDER BY "Số Ngày Trễ" DESC
+        """
+        df = query_pg_to_dataframe(query, (days_limit, start_date))
+        return convert_utc_columns(df)
