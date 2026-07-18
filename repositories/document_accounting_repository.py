@@ -145,7 +145,7 @@ class DocumentAccountingRepository:
 
     @staticmethod
     def accountant_confirm_receive(flow_id, order_number, receive_date, username):
-        """[ĐÃ FIX AN TOÀN TRUY VẤN] Xác nhận ký nhận hồ sơ và đồng bộ sang kho lưu trữ"""
+        """[ĐÃ SỬA] Sử dụng customer_name thay thế cho customer_code bị thiếu"""
         # 1. Cập nhật luồng kế toán
         query = """
         UPDATE document_accounting_flows
@@ -154,17 +154,15 @@ class DocumentAccountingRepository:
             updated_at = %s
         WHERE id = %s
         """
-        now = datetime.now() # Lấy chính xác ngày giờ hiện tại của máy chủ
+        now = datetime.now() 
         
-        # FIX TẠI ĐÂY: Truyền đủ 3 tham số (receive_date ứng với %s số 1, now ứng với %s số 2, flow_id ứng với %s số 3)
         execute_pg_query(query, (receive_date, now, flow_id))
         
         DocumentAccountingRepository.write_action_log(
             order_number, "APPROVE", username, f"Kế toán ký nhận hồ sơ. Ngày thực tế: {receive_date}"
         )
         
-        # 2. Truy vấn thông tin an toàn (Tránh lỗi UndefinedColumn nếu orders không có customer_code)
-        # Đầu tiên lấy thông tin cơ bản trước
+        # 2. Truy vấn thông tin an toàn (Lấy customer_name từ bảng orders)
         info_query = """
             SELECT o.customer_name, daf.note 
             FROM document_accounting_flows daf
@@ -177,23 +175,15 @@ class DocumentAccountingRepository:
             cust_name = df_info.iloc[0]["customer_name"] if pd.notna(df_info.iloc[0]["customer_name"]) else "Khách hàng vãng lai"
             note = df_info.iloc[0]["note"] or ""
             
-            # Kiểm tra mã khách hàng (Thử lấy customer_code, nếu lỗi thì dùng mã mặc định 'KH_AUTO')
-            cust_code = "KH_AUTO"
-            try:
-                code_query = "SELECT customer_code FROM orders WHERE order_number = %s LIMIT 1"
-                df_code = query_pg_to_dataframe(code_query, (order_number,))
-                if not df_code.empty and pd.notna(df_code.iloc[0]["customer_code"]):
-                    cust_code = df_code.iloc[0]["customer_code"]
-            except Exception:
-                # Nếu bảng orders không có cột customer_code, giữ nguyên 'KH_AUTO' mà không làm sập luồng code
-                pass
+            # GIẢI PHÁP THEO Ý BẠN: Lấy luôn tên khách hàng thế vào chỗ mã khách hàng bị thiếu
+            cust_code = cust_name  
             
-            # 3. Đồng bộ tự động sang bảng lưu trữ mới (Ghi đè luôn ngày archive_date để tránh bị NULL)
+            # 3. Đồng bộ tự động sang bảng lưu trữ mới
             from repositories.document_archive_repository import DocumentArchiveRepository
             DocumentArchiveRepository.add_archive_entry(
                 order_number=order_number,
                 customer_name=cust_name,
-                customer_code=cust_code,
+                customer_code=cust_code, # Truyền tên khách hàng vào đây, an toàn 100%
                 document_type="Hồ sơ bàn giao kế toán",
                 file_type="CHỜ FILE",
                 file_path="Chưa tải lên",  
