@@ -31,6 +31,7 @@ from erp_pages.notes_page import show_notes_page
 from database.pg_database import init_pg_db
 from erp_pages.document_accounting_page import show_document_accounting_page
 from erp_pages.document_archive_page import show_document_archive_page
+from services.note_service import NoteService  # <--- THÊM DÒNG NÀY
 # =========================
 # INIT DATABASE
 # =========================
@@ -300,6 +301,17 @@ alert_count = alert_summary["total"]
 equipment_alert_count = EquipmentTrackingNotificationService.get_alert_count()
 
 # ========================================================
+# 📌 LẤY ĐẾM SỐ LƯỢNG GHI CHÚ
+# ========================================================
+user_id = st.session_state.get('user_id')
+role_for_notes = st.session_state.get('role', '')
+
+try:
+    notes_list = NoteService.get_notes(user_id, role_for_notes) if user_id else []
+    notes_count = len(notes_list) if notes_list else 0
+except Exception:
+    notes_count = 0
+# ========================================================
 # ĐÃ DI CHUYỂN: KHU VỰC THÔNG BÁO TỔNG HỢP LÊN NGAY DƯỚI PROFILE
 # ========================================================
 if alert_count > 0:
@@ -367,7 +379,7 @@ if role == "ADMIN":
         "📑 Trang Lưu Trữ Hồ Sơ Kế Toán",
         f"📦 Equipment Tracking ({equipment_alert_count})",
         "💵 Revenue Management",
-        "📝 Notes Management",
+        f"📝 Notes Management ({notes_count})",
         "📝 Logs",
         "👥 User Management",
         "🔄 Ownership Transfer",
@@ -390,7 +402,7 @@ elif role == "ASSISTANT":
         "📑 Bàn Giao Kế Toán",
         f"📦 Equipment Tracking ({equipment_alert_count})",
         "💵 Revenue Management",
-        "📝 Notes Management",
+        f"📝 Notes Management ({notes_count})",
         "📝 Logs"
     ]        
 
@@ -402,7 +414,7 @@ elif role == "SALE":
         f"🔔 Notification Center ({alert_count})",
         "📈 Analytics Dashboard",
         "💵 Revenue Management",
-        "📝 Notes Management",
+        f"📝 Notes Management ({notes_count})",
         "📝 Logs"
     ]
     
@@ -411,13 +423,24 @@ elif role == "ACCOUNTANT":
     menu_options = [
         "📑 Bàn Giao Kế Toán",
         "📑 Trang Lưu Trữ Hồ Sơ Kế Toán",
-        "📝 Notes Management"
+        f"📝 Notes Management ({notes_count})"
     ]    
 
-try:
-    default_index = menu_options.index(st.session_state["current_page"])
-except ValueError:
-    default_index = 0
+# ========================================================
+# 🛠️ TỐI ƯU TÌM INDEX MENU KHI SỐ ĐẾM (BADGE) THAY ĐỔI
+# ========================================================
+current_p = st.session_state.get("current_page", "")
+
+# Lấy tên gốc của trang (loại bỏ phần số đếm trong ngoặc đơn nếu có)
+# Ví dụ: "📝 Notes Management (5)" -> "📝 Notes Management"
+base_page_name = current_p.split(" (")[0] if current_p else ""
+
+default_index = 0
+for idx, option in enumerate(menu_options):
+    # Khớp chính xác hoặc khớp phần tên gốc đầu tiên
+    if option == current_p or option.startswith(base_page_name):
+        default_index = idx
+        break
 
 page = st.sidebar.radio(
     "Navigation System",
@@ -462,7 +485,7 @@ try:
         show_equipment_tracking_page()   
     elif page == "💵 Revenue Management":
         show_revenue_management_page(current_user=st.session_state['username'])  
-    elif page == "📝 Notes Management":  # <--- THÊM DÒNG NÀY
+    elif page.startswith ("📝 Notes Management"):  # <--- THÊM DÒNG NÀY
         show_notes_page()      
     elif page == "📝 Logs":
         show_logs_page()
